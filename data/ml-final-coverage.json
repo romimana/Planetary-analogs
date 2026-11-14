@@ -1,0 +1,38 @@
+{
+  "github": {
+    "earth": {
+      "rows": 31,
+      "samples": 13,
+      "locations": 13
+    },
+    "mars": {
+      "rows": 705,
+      "samples": 9,
+      "locations": 7
+    },
+    "moon": {
+      "rows": 171,
+      "samples": 3,
+      "locations": 3
+    },
+    "sha256": "7e0f48d8eb7960eb7afeda9f4b2f9dc59232c1da75c98b75595dab1fa89918c0"
+  },
+  "local": {
+    "earth": {
+      "rows": 199,
+      "samples": 65,
+      "locations": 65
+    },
+    "mars": {
+      "rows": 705,
+      "samples": 9,
+      "locations": 7
+    },
+    "moon": {
+      "rows": 171,
+      "samples": 3,
+      "locations": 3
+    },
+    "sha256": "6fca98c73358d5eaacde763a6875f88eb7ed239ddb5f5f08cd3339e50d442647"
+  }
+}
