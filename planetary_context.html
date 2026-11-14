@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>נקודות ייחוס במאדים ובירח</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 "Segoe UI",sans-serif;background:#111b22;color:#eef4f0}
+body{max-width:960px;margin:auto;padding:2rem 1rem} h1{font-size:clamp(2rem,5vw,3rem);line-height:1.1}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}
+label{display:grid;gap:.4rem} select{font:inherit;padding:.6rem;background:#1b2b35;border:1px solid #64808a;border-radius:.4rem;width:100%}
+section{background:#1b2b35;border:1px solid #47626c;border-radius:.6rem;padding:1rem;margin:1rem 0}
+dt{font-weight:bold} dd{margin:0 0 .65rem} a{color:#a7eed1;margin-inline-end:1rem}
+small{color:#c0d0d9} h2{margin-top:0}
+</style>
+<h1>נקודות ייחוס במאדים ובירח</h1>
+<p>החלונות במאדים הם מדידות אטמוספריות ובירח טמפרטורת פני שטח לפי שעה שמשית.</p>
+<div class="controls">
+<label>עולם<select id="body"><option value="mars">מאדים</option><option value="moon">ירח</option></select></label>
+<label>דגימה<select id="sample"></select></label>
+<label>חלון תנאי סביבה<select id="window"></select></label>
+</div>
+<section><h2>מיקום וסוג קרקע</h2><div id="location"></div></section>
+<section><h2>הרכב הקרקע</h2><div id="chemistry"></div></section>
+<section><h2>תבליט בסביבה של 5×5 ק״מ</h2><div id="terrain"></div></section>
+<section><h2>תנאי סביבה</h2><div id="environment" aria-live="polite"></div></section>
+<script id="payload" type="application/json">__CONTEXT__</script>
+<script>
+const {rows,fields}=JSON.parse(document.querySelector('#payload').textContent);
+const get=id=>document.getElementById(id);
+const fmt=x=>new Intl.NumberFormat('he',{maximumFractionDigits:3}).format(x);
+const current=()=>rows.find(row=>row.id===get('sample').value);
+const metrics={air_temperature_k:'טמפרטורת אוויר (K)',ground_brightness_k:'טמפרטורת בהירות פני שטח (K)',pressure_pa:'לחץ (Pa)'};
+function display(id, pairs, sources=[]){
+ const dl=document.createElement('dl');
+ for(const [name,value] of pairs){
+  const term=document.createElement('dt'), definition=document.createElement('dd');
+  term.textContent=name; definition.textContent=value; dl.append(term,definition);
+ }
+ get(id).replaceChildren(dl);
+ for(const [name,url] of sources){
+  const a=document.createElement('a'); a.textContent=name; a.href=url;
+  a.target='_blank';a.rel='noopener';get(id).append(a);
+ }
+}
+function windows(row){
+ return row.environment.flatMap(product=>product.windows.map(window=>({product,window})));
+}
+function loadSamples(){
+ get('sample').replaceChildren(...rows.filter(row=>row.body===get('body').value)
+   .sort((a,b)=>Number(b.environment.length>0)-Number(a.environment.length>0))
+   .map(row=>new Option(row.area+' · '+row.name+(row.profile_status==='linked_at_station_or_rover_scale'?' · עם חלונות סביבה':row.profile_status==='linked_at_mission_scale'?' · חלונות ברמת משימה':''),row.id)));
+ loadWindows();
+}
+function loadWindows(){
+ const row=current(), t=row.terrain;
+ get('window').replaceChildren(...windows(row).map(({window},i)=>new Option(window.window,i)));
+ get('window').disabled=!get('window').options.length;
+ display('location',[
+  ['סוג מיקום',row.location_role],
+  ['קו רוחב / קו אורך מזרחי',fmt(row.lat)+' / '+fmt(row.lon)],
+  ['תיאור הקרקע לפי המקור',row.material]
+ ],[['מקור מיקום',row.location_source],['מקור סוג קרקע',row.material_source]]);
+ display('chemistry',[
+  ...Object.entries(row.chemistry).map(([key,m])=>[fields[key][0]+' · '+fields[key][1],fmt(m.value)+'% משקל']),
+  ['סינון',row.chemistry_status.startsWith('hold')?'ממתינה להשוואת ששת הרכיבים':'מתאימה להשוואת הרכב ראשונית']
+ ],[['מקור המדידה · '+row.chemistry_locator,row.chemistry_url]]);
+ display('terrain',[
+  ['חציון שיפוע / אחוזון 90',fmt(t.slope_median_deg)+'° / '+fmt(t.slope_p90_deg)+'°'],
+  ['שיפוע מעל 10°',fmt(t.slope_over_10_deg_fraction*100)+'% מהפיקסלים שחושב להם שיפוע'],
+  ['הפרש בין אחוזוני גובה 90 ו־10',fmt(t.relief_p90_p10_m)+' מ׳'],
+  ['חספוס ביחס לארבעת השכנים',fmt(t.local_roughness_rms_m)+' מ׳'],
+  ['גודל פיקסל מקורי',t.cell_m.map(fmt).join(' × ')+' מ׳'],
+  ['גריד משותף 500 מ׳ · חציון שיפוע ואחוזון 90',fmt(t.common_500m.slope_median_deg)+'° / '+fmt(t.common_500m.slope_p90_deg)+'°'],
+  ['גריד משותף 500 מ׳ · הפרש גבהים, חספוס ושטח תלול',fmt(t.common_500m.relief_p90_p10_m)+' מ׳ / '+fmt(t.common_500m.local_roughness_rms_m)+' מ׳ / '+fmt(t.common_500m.slope_over_10_deg_fraction*100)+'%']
+ ],[['תווית מודל הגבהים',t.label_url]]);
+ loadEnvironment();
+}
+function loadEnvironment(){
+ const item=windows(current())[Number(get('window').value)];
+ if(!item){display('environment',[['כיסוי','אין חלון סביבה מאומת לרשומה זו']]);return;}
+ const {product:p,window:w}=item;
+ const data=w.values?Object.entries(w.values).map(([k,v])=>[metrics[k],fmt(v.median)+' · '+v.n+' קריאות'])
+   :[['טמפרטורת בהירות פני שטח',fmt(w.surface_brightness_k)+' K']];
+ display('environment',[['חלון',w.window],...data,
+  ['מרחק לנקודת הייחוס של מקור הסביבה',fmt(p.distance_m)+' מ׳'],
+  ['תמיכה מרחבית וזמנית',p.kind],
+  ...(p.waypoint_rmc?[['נקודת מסלול',p.waypoint_rmc+' · סול '+p.waypoint_sol],
+    ['הפרש מסול דגימת הכימיה',p.chemistry_sol_delta+' סולים']]:[])
+ ],[['מקור המדידה',p.url],['תווית המוצר',p.label_url]]);
+}
+get('body').addEventListener('change',loadSamples);
+get('sample').addEventListener('change',loadWindows);
+get('window').addEventListener('change',loadEnvironment);
+loadSamples();
+</script>
+</html>

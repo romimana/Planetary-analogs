@@ -36,3 +36,5 @@ Run `python audit.py` after both builds. See the [audit and Earth matching plan]
 [Analog matching pilot](PILOT.md)
 
 [Curated soil references and codebook](CODEBOOK.md)
+
+[Planetary sample context and environmental windows](CONTEXT.md)
