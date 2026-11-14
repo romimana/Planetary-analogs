@@ -2,7 +2,7 @@
 
 NASA Space Apps 2026 · [Identify Earth Locations that Analog the Permanent Moon Base Locations and Mars](https://www.spaceappschallenge.org/2026/challenges/permanent-moon-base-locations-and-mars/)
 
-This release organizes Mars reference measurements for a future search for terrestrial analogs. It contains 20 named sites and sub-sites, 340 Jezero terrain cells, 1,743 chemistry records, 4,745 Gale outreach weather reports, and a separate inventory of 385,049 cataloged craters. The Moon release joins polar terrain and thermal data and includes laboratory chemistry from Apollo and Luna. Earth datasets and analog rankings are pending.
+Start with the [ML dataset and codebook](ML.md). The snapshot includes Earth candidates and Mars and Moon targets, with SQLite views for chemistry, terrain, and environmental comparisons. The source builds below reconstruct the broader inventories.
 
 ## Reproduce Mars
 

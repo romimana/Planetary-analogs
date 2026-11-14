@@ -1,0 +1,126 @@
+{
+  "earth": {
+    "chemistry_inputs": {
+      "rows": 1002,
+      "distinct_locations": 1002
+    },
+    "terrain_inputs": {
+      "rows": 56,
+      "distinct_locations": 56
+    },
+    "modis_temperature": {
+      "rows": 1016,
+      "distinct_locations": 436
+    },
+    "surface_temperature_inputs": {
+      "rows": 1016,
+      "distinct_locations": 436
+    },
+    "surface_terrain_inputs": {
+      "rows": 63,
+      "distinct_locations": 26
+    },
+    "joined_inputs": {
+      "rows": 1920,
+      "distinct_locations": 20
+    },
+    "radar": {
+      "rows": 15,
+      "distinct_locations": 15
+    }
+  },
+  "planetary": {
+    "samples": {
+      "rows": 161,
+      "distinct_locations": 40,
+      "by_body": {
+        "mars": [
+          149,
+          32
+        ],
+        "moon": [
+          12,
+          8
+        ]
+      }
+    },
+    "chemistry_inputs": {
+      "rows": 149,
+      "distinct_locations": 40,
+      "by_body": {
+        "mars": [
+          137,
+          32
+        ],
+        "moon": [
+          12,
+          8
+        ]
+      }
+    },
+    "mars_atmosphere_inputs": {
+      "rows": 744,
+      "distinct_locations": 7,
+      "by_body": {
+        "mars": [
+          744,
+          7
+        ]
+      }
+    },
+    "mars_surface_inputs": {
+      "rows": 705,
+      "distinct_locations": 7,
+      "by_body": {
+        "mars": [
+          705,
+          7
+        ]
+      }
+    },
+    "moon_thermal_inputs": {
+      "rows": 171,
+      "distinct_locations": 3,
+      "by_body": {
+        "moon": [
+          171,
+          3
+        ]
+      }
+    }
+  },
+  "earth_local": {
+    "chemistry_inputs": {
+      "rows": 5345,
+      "distinct_locations": 5240
+    },
+    "terrain_inputs": {
+      "rows": 182,
+      "distinct_locations": 179
+    },
+    "modis_temperature": {
+      "rows": 9397,
+      "distinct_locations": 4010
+    },
+    "surface_temperature_inputs": {
+      "rows": 9610,
+      "distinct_locations": 4010
+    },
+    "surface_terrain_inputs": {
+      "rows": 344,
+      "distinct_locations": 116
+    },
+    "joined_inputs": {
+      "rows": 5088,
+      "distinct_locations": 52
+    },
+    "radar": {
+      "rows": 16,
+      "distinct_locations": 16
+    }
+  },
+  "sha256": {
+    "earth.sqlite": "8d851bd1d7e52b67afc8cc7b11553e5bbb461d098d0d46da8b5d46c6233fc0ce",
+    "planetary.sqlite": "e22b88906b8d32474d5c78ca82cd6de2eb2795682b56c4f0046408861c8c8eda"
+  }
+}
