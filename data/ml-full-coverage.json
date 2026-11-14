@@ -1,0 +1,101 @@
+{
+  "gsj_ambiguous_ids": [
+    78013
+  ],
+  "github": {
+    "earth_by_source": [
+      [
+        "GSJ",
+        3022,
+        3022,
+        558
+      ],
+      [
+        "NGSA",
+        1002,
+        1002,
+        56
+      ]
+    ],
+    "planetary_by_body_status": [
+      [
+        "mars",
+        "chemistry_and_terrain",
+        128
+      ],
+      [
+        "mars",
+        "chemistry_hold",
+        12
+      ],
+      [
+        "mars",
+        "rover_or_station",
+        9
+      ],
+      [
+        "moon",
+        "mission_context",
+        9
+      ],
+      [
+        "moon",
+        "rover_or_station",
+        3
+      ]
+    ],
+    "era5_sites": 286,
+    "sha256": "0d34f7a29bb77f5012f1daaf64ff7f0c8425ef52137bef71525247cdb12bace3"
+  },
+  "local": {
+    "earth_by_source": [
+      [
+        "GEMAS",
+        4343,
+        4238,
+        123
+      ],
+      [
+        "GSJ",
+        3022,
+        3022,
+        558
+      ],
+      [
+        "NGSA",
+        1002,
+        1002,
+        56
+      ]
+    ],
+    "planetary_by_body_status": [
+      [
+        "mars",
+        "chemistry_and_terrain",
+        128
+      ],
+      [
+        "mars",
+        "chemistry_hold",
+        12
+      ],
+      [
+        "mars",
+        "rover_or_station",
+        9
+      ],
+      [
+        "moon",
+        "mission_context",
+        9
+      ],
+      [
+        "moon",
+        "rover_or_station",
+        3
+      ]
+    ],
+    "era5_sites": 352,
+    "sha256": "e3fa2494d7fc4bea609f201f535d42df88db5311d0779b35f6213a38b01523c1"
+  }
+}

@@ -1,5 +1,29 @@
 # Analog matching datasets
 
+## Full dataset with missing values
+
+Open [`ml-full.sqlite`](data/ml-full.sqlite) for flexible matching. See [coverage and checksums](data/ml-full-coverage.json). The local file `outputs/ml-full-local.sqlite` adds GEMAS under its publisher terms. Run the comparison and final builds, then run `python build_full_ml.py` to reproduce both files. The complete dataset remains available in the `complete_earth`, `complete_mars`, and `complete_moon` tables.
+
+| Table or view | Grain and content |
+| --- | --- |
+| `earth_profiles` | One row per sample, with coordinates, chemistry and available terrain |
+| `earth_modis` | Surface temperature observations keyed by site, granule and pass |
+| `earth_site_era5`, `earth_era5` | Geographic links by `site_id`, with atmospheric temperature and surface pressure by `weather_id = id` |
+| `earth_site_power`, `earth_power` | Coarser regional weather, with the same join keys |
+| `earth_radar` | Canadian RADARSAT-1 context keyed by site and scene |
+| `planet_samples`, `planet_sample_scenarios`, `planet_scenarios` | Planetary samples, links and environment windows |
+| `planetary_profiles` | Sample and scenario view retaining samples without a scenario. Filter `comparison_status <> 'chemistry_hold'` for eligible chemistry |
+
+Treat SQL `NULL` as unavailable. Use the same explicitly selected fields for every candidate in a ranking. A candidate is eligible only if all selected fields are present for both target and candidate. For ratios, apply the log-ratio transform on the same selected set of at least two chemistry components on both sides. Coordinate IDs are join keys and provenance and quality fields are metadata. Atmospheric scenarios and MODIS overpasses have different time support. Use `complete_earth` when both are needed within the validated time tolerance.
+
+### Japan
+
+Source: Geological Survey of Japan, AIST, [Geochemical Map downloads](https://gbank.gsj.jp/geochemmap/data/download.htm), [map-specific terms](https://gbank.gsj.jp/geochemmap/setumei/licence.html) and [GSJ numerical data terms](https://www.gsj.jp/en/license/). These are adapted numerical records. The builder joins the chemistry and coordinate files by survey sample ID, and omits both entries with ambiguous ID 78013. File hashes and source URLs appear in `additional_sources`. Preserve original JGD2000 coordinates. For regional GIS extraction treat the coordinates as approximate WGS84. GIS computes the same 5 km terrain features for sites covered by the eight densest eligible NASADEM tiles and associates ERA5 for those sites using the same grid-cell distance rule.
+
+The Japanese river sediment was sieved to 180 µm and the magnetic fraction removed. The five retained components are reported in oxide-equivalent weight percent after acid digestion and ICP-AES. The material fraction and analytical method can shift the composition compared with the Australian and planetary measurements. Use Japan for exploratory rankings with a source and material filter. Silica, a major component for comparing silicate-rich material, stays NULL in the Japanese rows. See [method and material](https://doi.org/10.2343/geochemj.2.0618).
+
+## Complete dataset
+
 **Use the [final SQLite snapshot](data/ml-final.sqlite) for modeling.** It has exactly three tables, `earth`, `mars` and `moon`. Every column in these tables is required. See [final coverage and checksums](data/ml-final-coverage.json). The earlier comparison snapshots below are source material with broader coverage.
 
 | Table | Required environment fields | Independent locations |

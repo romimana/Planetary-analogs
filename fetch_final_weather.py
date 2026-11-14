@@ -17,9 +17,7 @@ def batches(points, size):
     for i in range(0, len(points), size):
         yield points[i:i + size]
 
-def main():
-    with sqlite3.connect(OUT / "earth-ml-local.sqlite") as db:
-        coords = sorted({cell(lat, lon) for _, lat, lon in db.execute(SITE_QUERY)})
+def fetch_cells(coords):
     for day in DAYS:
         date_iso = date(int(day[:4]), int(day[4:6]), int(day[6:])).isoformat()
         for batch in batches(coords, 12):
@@ -62,6 +60,11 @@ def main():
                     records.append((lat, lon, *grid, stamp, temperature + 273.15, pressure * 100, url, digest(raw)))
             (CACHE / f"validated-era5-final-{tag}.json").write_text(json.dumps(records), encoding="utf-8")
         print(f"Processed {date_iso}", flush=True)
+
+def main():
+    with sqlite3.connect(OUT / "earth-ml-local.sqlite") as db:
+        coords = sorted({cell(lat, lon) for _, lat, lon in db.execute(SITE_QUERY)})
+    fetch_cells(coords)
 
 if __name__ == "__main__":
     main()
