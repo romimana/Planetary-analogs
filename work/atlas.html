@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מאגר מאדים</title>
+<style>
+  :root { color-scheme:light; font: 16px Arial,sans-serif; color:#25221f; background:#f5f1eb }
+  body { max-width:1340px; margin:auto; padding:30px 20px; }
+  header { background:#28211e; color:#fbf0e5; border-radius:14px; padding:28px; }
+  h1 { margin:0 0 12px; font-size:clamp(30px,6vw,52px); }
+  p { line-height:1.45; }
+  nav,.filters,.pager { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:18px 0; }
+  button,select,input { font:inherit; border:1px solid #ac9c91; border-radius:7px; padding:8px 13px; background:#fff; color:#28211e; }
+  button { cursor:pointer; }
+  button[aria-pressed=true] { background:#8d3926; color:#fff; border-color:#8d3926; }
+  button:disabled { opacity:.45; cursor:default; }
+  a { color:#85432d; overflow-wrap:anywhere; }
+  .scroll { background:#fff; max-height:65vh; overflow:auto; border:1px solid #d4c5ba; border-radius:8px; }
+  table { border-collapse:collapse; text-align:left; min-width:100%; font-size:.88rem; }
+  th,td { padding:9px; border-bottom:1px solid #e9e1da; vertical-align:top; }
+  th { position:sticky; top:0; background:#efe3d9; z-index:1; }
+  tr:nth-child(even) { background:#fffbf7; }
+  #help { max-width:960px; }
+</style>
+<header>
+  <h1>מאגר הייחוס של מאדים</h1>
+  <p>__COUNTS__</p>
+</header>
+<nav aria-label="טבלאות" id="tabs"></nav>
+<p id="help"></p>
+<div class="filters">
+  <label for="site">אזור</label><select id="site"></select>
+  <label for="search">חיפוש</label><input id="search" type="search" placeholder="אתר, משתנה או מקור">
+</div>
+<div class="pager">
+  <button id="back">הקודם</button><span id="count" aria-live="polite"></span><button id="next">הבא</button>
+</div>
+<div class="scroll"><table dir="ltr" aria-label="נתוני מאדים"><thead></thead><tbody></tbody></table></div>
+<p>מאגר SQLite כולל גם את קטלוג המכתשים המלא, תצפיות כימיות עם אי־ודאות וגאומטריית חלונות Jezero. הקישורים למקורות נפתחים באינטרנט.</p>
+<script id="data" type="application/json">__DATA_JSON__</script>
+<script>
+  const data = JSON.parse(document.querySelector('#data').textContent);
+  const configs = {
+    coverage:['כיסוי האתרים','כמה נתונים כבר נטענו לכל אזור. ערכי science אינם כוללים את סדרת ההסברה של Curiosity.'],
+    details:['מדידות לפי אזור','גובה, שיפועים, תכונות דיונות, חום, קרח וחלונות סיכום. אפשר לחפש שם משתנה כגון slope.'],
+    chemistry:['הרכב כימי','מדגם עמודות מכל רשומות הכימיה, באחוזי משקל. הרשומות עם סימוני איכות וכפילויות נשמרו כפי שהגיעו מהמקור.'],
+    assets:['תצלומים ומפות','כל יעד וחלון במאגר מקושרים לתצלום, למפה או לתוצר תבליט. צילום אזורי יכול להיות משותף לכמה חלונות.'],
+    weather:['מזג אוויר ב־Gale','הזנת NASA/CAB מיועדת להסברה. סדרת הסול מוצגת לעיון. הארכיון המדעי של REMS מופיע בטבלת המקורות.'],
+    sources:['מקורות','כאן מופיעים קישור, מזהה מוצר ומגבלות שימוש. לקובצי קלט שנקלטו מופיע גם SHA‑256.']
+  };
+  const get = id => document.getElementById(id);
+  const site = get('site');
+  const search = get('search');
+  const sourceMap = new Map(data.sources.map(row => [row.id,row]));
+  const labels = new Map(data.coverage.map(row => [row.id,row.name]));
+  let current = 'coverage';
+  let page = 0;
+  const pageSize = 40;
+  const buttons = new Map();
+  for (const [key,[name]] of Object.entries(configs)) {
+    const button = document.createElement('button');
+    button.textContent = name;
+    button.addEventListener('click', () => {
+      current = key; page = 0; search.value = '';
+      render();
+    });
+    buttons.set(key,button);
+    get('tabs').append(button);
+  }
+  site.add(new Option('כל האזורים',''));
+  for (const [id,name] of labels) site.add(new Option(name,id));
+  function render() {
+    const selected = site.value;
+    const keys = Object.keys(data[current][0]);
+    const selectedArea = ['assets','details','chemistry','coverage'].includes(current) ? selected : '';
+    get('help').textContent = configs[current][1];
+    site.disabled = !['assets','details','chemistry','coverage'].includes(current);
+    for (const [key,button] of buttons) button.setAttribute('aria-pressed', key === current);
+    const term = search.value.trim().toLowerCase();
+    const records = data[current].filter(row => {
+      const areaId = current === 'coverage' ? row.id : row.area_id;
+      return (!selectedArea || areaId === selectedArea) &&
+        (!term || Object.values(row).concat(labels.get(areaId) || '').join(' ').toLowerCase().includes(term));
+    });
+    page = Math.min(page, Math.max(0,Math.ceil(records.length/pageSize)-1));
+    const start = page*pageSize;
+    get('count').textContent = records.length ? `${start+1}–${Math.min(start+pageSize,records.length)} מתוך ${records.length.toLocaleString()}` : 'אין רשומות מתאימות';
+    get('back').disabled = page === 0;
+    get('next').disabled = start+pageSize >= records.length;
+    const header = document.querySelector('thead');
+    const body = document.querySelector('tbody');
+    header.replaceChildren();
+    body.replaceChildren();
+    const tr = header.insertRow();
+    for (const key of keys) {
+      const th = document.createElement('th');
+      th.scope = 'col'; th.textContent = key;
+      tr.append(th);
+    }
+    for (const row of records.slice(start,start+pageSize)) {
+      const tr = body.insertRow();
+      for (const key of keys) {
+        const cell = tr.insertCell();
+        const value = row[key];
+        const url = key === 'source_id' ? sourceMap.get(value)?.url : (key === 'url' ? value : null);
+        if (url) {
+          const link = document.createElement('a');
+          link.href = url; link.target = '_blank'; link.rel = 'noopener';
+          link.textContent = key === 'source_id' ? value : 'Open source';
+          cell.append(link);
+        } else {
+          cell.textContent = (key === 'area_id' ? labels.get(value) : value) ?? '—';
+        }
+      }
+    }
+  }
+  site.addEventListener('change', () => { page=0; render(); });
+  search.addEventListener('input', () => { page=0; render(); });
+  get('back').addEventListener('click', () => { page--; render(); });
+  get('next').addEventListener('click', () => { page++; render(); });
+  render();
+</script>
+</html>

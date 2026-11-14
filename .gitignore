@@ -1,0 +1,6 @@
+/.venv/
+/outputs/
+/work/*
+!/work/build_mars.py
+!/work/atlas.html
+__pycache__/
