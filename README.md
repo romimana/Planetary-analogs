@@ -30,3 +30,5 @@ python work/build_moon.py
 ```
 
 Outputs are `outputs/moon.sqlite` and `outputs/Moon Atlas.html`. See the [Moon methods and sources](MOON.md) for coverage, calculations, and audit queries.
+
+Run `python audit.py` after both builds. See the [audit and Earth matching plan](AUDIT.md).

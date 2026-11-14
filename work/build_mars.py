@@ -223,7 +223,7 @@ for id, name in (("mawrth", "clay minerals"), ("oxia", "Fe/Mg-rich clay, includi
     obs(id, "mineral_detection", name, None, "orbital spectral interpretation", "regional outcrops", src, "product description")
 
 dunes = [
-    ("nili", "Nili Patera", None, 67.32, 9.2, 79, 22.4, 8.8, .5, .3, 11.6, 7.2, "b"),
+    ("nili", "Nili Patera", 8.7, 67.32, 9.2, 79, 22.4, 8.8, .5, .3, 11.6, 7.2, "b"),
     ("meroe", "Meroe Patera", 7.28, 67.75, 9.5, 50, 17.5, 6.9, .5, .2, 9.5, 3.6, "c"),
     ("herschel_w", "West Herschel", -15.26, 127.92, 9.2, 42, 12.5, 5.4, .3, .1, 3.6, 1.6, "d"),
     ("herschel_e", "East Herschel", -15.59, 131.88, 7.8, 12, 7.7, 3.1, .5, .2, 4.4, 1.5, "e"),
@@ -232,8 +232,7 @@ dunes = [
 ]
 for id, name, lat, lon, years, n, height, hsd, rate, rsd, flux, fsd, figure in dunes:
     area(id, name, "dune field", "dunes", lat, lon,
-         note="Center of T1 image from Table 1. Nili latitude is unresolved in the table text and left null." if id == "nili" else
-              "Center of T1 image from Table 1; longitude converted to 0–360° E.")
+         note="Center of T1 image from Table 1; longitude converted to 0–360° E.")
     asset(id, "dunes", "Orbital photograph in the study", "visual", f"Figure 1{figure}")
     for field, value, unit, sd in [
         ("dune_height", height, "m", hsd), ("dune_migration_rate", rate, "m/Earth year", rsd),

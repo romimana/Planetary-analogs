@@ -57,7 +57,7 @@ source("polar_atlas", "LPI Lunar South Pole Atlas", "https://www.lpi.usra.edu/lu
        "Regional reference imagery, maps and interpretation.")
 source("moon_trek", "NASA Moon Trek", "https://trek.nasa.gov/moon/", "Interactive imagery and planetary layers.")
 source("prp_label", "PDS Diviner south polar resource product label", PRP + ".xml",
-       "Field locations and definitions; annual surface temperature fitted to observations.", "prp.xml")
+       "Field locations and definitions; annual mean at 2 cm depth and annual maximum at the surface, fitted to observations.", "prp.xml")
 
 landings = {
     "Apollo 11": (.67416, 23.47314, -1926, .3),
@@ -106,7 +106,9 @@ def sample(site, src, target, fraction, line, summary=False):
 
 def chem(site, src, key, field, cell, unit, line, summary=False):
     cell = cell.strip()
-    if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", cell):
+    if cell:
+        if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", cell):
+            raise ValueError(f"{src}, {line}, {field}: {cell!r}")
         obs(site, field, float(cell), unit,
             "published soil compilation" if summary else "published laboratory result",
             "selected soils as defined by source column" if summary else "returned soil sample or size fraction",
@@ -132,7 +134,8 @@ for column, name in enumerate(rows[3].split()):
         if field in ("", "ppm", "P2O3") or (name == "11" and field == "Na2O"):
             continue
         start = 8 + column * 8
-        chem(site, "soil15", key, field, row[start:start + 8], unit, f"line {line}, column {name}", summary=True)
+        cell = row[8:].split()[column] if field == "Total" else row[start:start + 8]
+        chem(site, "soil15", key, field, cell, unit, f"line {line}, column {name}", summary=True)
 
 for n, start, unit in [(16, 32, "wt%"), (17, 24, "ppm")]:
     src = f"soil{n}"
@@ -209,7 +212,7 @@ for number, name in SITES.items():
     start = 210 * (1 + 2400*first)
     end = 210 * (1 + 2400*(last+1)) - 1
     source(temp_id, f"Diviner PRP south — Site {number} input slice", PRP + ".tab",
-           "Annual fitted temperatures. SHA-256 is for the stated 0-based inclusive HTTP byte range only.",
+           "Annual fitted mean at 2 cm and maximum at the surface. SHA-256 is for the stated 0-based inclusive HTTP byte range only.",
            f"prp{number}.tab", f"bytes={start}-{end}")
     tx, ty, avg, peak = thermal_data(number)
 
@@ -253,8 +256,10 @@ for number, name in SITES.items():
         window = f"{tile_id}:annual"
         add("time_windows", id=window, area_id=tile_id, kind="annual thermal model", sample_count=count,
             time_standard="annual fitted product, no assigned UTC dates", source_id=temp_id)
+        obs(tile_id, "subsurface_temperature_annual_mean_spatial_median", np.median(avg[mask]),
+            "K", "derived from Diviner annual thermal model", f"{count} triangle centroids inside {support}",
+            temp_id, polygon, window_id=window, depth_top_m=.02, depth_bottom_m=.02)
         for field, value in [
-            ("surface_temperature_annual_mean_spatial_median", np.median(avg[mask])),
             ("surface_temperature_annual_max_spatial_median", np.median(peak[mask])),
             ("surface_temperature_annual_max_spatial_p90", np.percentile(peak[mask],90)),
             ("surface_temperature_annual_max_coldest_triangle", np.min(peak[mask]))]:
@@ -270,7 +275,7 @@ for number, name in SITES.items():
 for key,value in {
     "body":"Moon", "longitude":"east positive, 0–360 degrees",
     "tile_overlap":"Parent DEMs can overlap. Tiles from different DEMs are not independent.",
-    "temperature":"Diviner PRP is a thermal model fitted to orbital data. Spatial percentiles are unweighted over triangle centroids. Temperature is lunar surface, not Earth air temperature.",
+    "temperature":"Diviner PRP is a thermal model fitted to orbital data. Spatial percentiles are unweighted over triangle centroids. The annual mean is modeled at 2 cm depth and the annual maximum at the surface.",
     "chemistry":"Landing coordinates are mission anchors only. Samples and fractions may overlap and do not characterize a polar tile.",
     "craters":"No lunar crater catalog ingested in this build."
 }.items():
@@ -301,16 +306,16 @@ data = {
         FROM samples s JOIN observations o ON s.id=o.sample_id GROUP BY s.id ORDER BY s.area_id,s.target"""),
     "assets": export_rows("SELECT a.*,s.url FROM assets a JOIN sources s ON a.source_id=s.id ORDER BY a.area_id"),
     "weather": export_rows("""SELECT area_id,parameter,ROUND(value,4) value,unit,evidence,spatial_support,
-        source_id,window_id FROM observations WHERE window_id IS NOT NULL ORDER BY id"""),
+        source_id,window_id,depth_top_m FROM observations WHERE window_id IS NOT NULL ORDER BY id"""),
     "sources": export_rows("SELECT * FROM sources ORDER BY id"),
 }
 template = (WORK/"atlas.html").read_text(encoding="utf-8")
 template = template.replace("מאדים", "הירח")
 template = template.replace("ערכי science אינם כוללים את סדרת ההסברה של Curiosity.",
                             "משימות החזרת דגימות, אזורי קוטב ותאי שטח בגודל קילומטר רבוע.")
-template = template.replace("מזג אוויר ב־Gale", "טמפרטורת פני שטח")
+template = template.replace("מזג אוויר ב־Gale", "טמפרטורת קרקע")
 template = template.replace("הזנת NASA/CAB מיועדת להסברה. סדרת הסול מוצגת לעיון. הארכיון המדעי של REMS מופיע בטבלת המקורות.",
-                            "נתוני Diviner מסוכמים על פני משולשים בתוך כל תא. החלון שנתי והערכים בקלווין.")
+                            "נתוני Diviner מסוכמים על פני משולשים בתוך כל תא. הערכים בקלווין. הממוצע השנתי בעומק 2 ס״מ, והמקסימום השנתי בפני השטח.")
 template = template.replace("מדגם עמודות מכל רשומות הכימיה, באחוזי משקל. הרשומות עם סימוני איכות וכפילויות נשמרו כפי שהגיעו מהמקור.",
                             "טבלאות מדגימות אפולו ולונה. יחידות מוצגות לצד כל ערך. חלק מהדגימות קיימות בכמה טבלאות.")
 template = template.replace("גובה, שיפועים, תכונות דיונות, חום, קרח וחלונות סיכום.",
