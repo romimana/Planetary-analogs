@@ -35,3 +35,26 @@ Exports contain `id`, `area_id`, `target`, `method`, `material`, `preparation_co
 Use all six positive components from the same sample. Calculate each component's natural log relative to the geometric mean of the six, and compare the resulting vectors with Euclidean distance (Aitchison distance). Proportionally scaling every component leaves the distance unchanged. Keep the original mass percentages visible for review, including when absolute content matters to the test. A user-selected emphasis can later be added as a weighted distance in log-ratio coordinates, clearly distinguished from the default. Keep a fixed panel per search so missing fields cannot give candidates an advantage. [Published geochemical log-ratio example](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2018JB016145).
 
 Next gate: check method bias on material reference standards where feasible and confirm sample geolocation before any terrain/weather join. Keep published map resolution and climate-pixel support instead of assigning coarse conditions to a precise sampling point. Expand Earth sources by applying this same feature and evidence contract.
+
+## Chemistry QA decision
+
+Use records marked `reference_for_relative_composition` for the initial six-component screening. Of the 149 Mars records, 137 meet the indicative APXS thresholds (55 Gale, 32 Gusev, 50 Meridiani); 12 Gusev records have potassium oxide below the 0.20 wt% reference threshold and are retained with `hold_for_six_component_comparison`. The threshold is a conservative project rule applied across these APXS datasets. It does not prove that a particular measurement was below its own detection limit. All 12 Apollo records remain reference candidates. Their source round-trip was checked for all six fields. All 4,343 GEMAS pilot rows meet their own published detection limits.
+
+[Berger et al., Table 1](https://doi.org/10.1029/2020JE006536) gives the following indicative limits and relative calibration deviations. The deviation describes reference-material performance. It gives neither the direction nor the magnitude of any individual sample correction. The [MER calibration report](https://doi.org/10.1029/2005JE002555) and archive notes distinguish calibration deviation from measurement-level fit or repeatability error. The Curiosity export also retains spectral width and instrument offset from the source CSV. All 55 selected Gale spectra have reported Fe-line widths 142.8–195.3 eV, below the 210 eV criterion discussed by [Berger et al. 2022](https://doi.org/10.1029/2021JE007171).
+
+| Feature | Indicative limit, wt% | Relative calibration deviation |
+|---|---:|---:|
+| Silica | 1 | 3% |
+| Titanium dioxide | 0.2 | 20% |
+| Magnesium oxide | 1 | 14% |
+| Calcium oxide | 0.2 | 7% |
+| Potassium oxide | 0.2 | 15% |
+| Manganese oxide | 0.05 | 8% |
+
+### Material and depth
+
+- **Mars.** APXS measures a small patch in place. Berger et al. give a diameter of roughly 15–20 mm under close placement and element-dependent signal depths of roughly 3–90 micrometers in an example basalt. These are instrument response depths. They cannot be used as collection depth. The fit assumes a sufficiently homogeneous target; grain size, matrix and standoff can shift reported ratios. Keep untouched and disturbed preparation codes. MER Norm and integration-hour cutoffs above remain screening choices.
+- **Moon.** Laboratory results are for returned bulk aliquots; the reference suite includes bulk material below 1 mm, which is a grain-size cutoff. The collection depth is unknown in this export. [Lunar Sample Atlas](https://www.lpi.usra.edu/lunar/samples/atlas/index.cfm) gives collection descriptions or stations for some parents. NASA's [10084 Compendium](https://www.lpi.usra.edu/lunar/samples/atlas/compendium/10084.pdf), Table 1a, reproduces the values in the Laul column and lists analyses of other splits. For titanium dioxide one comparison is 7.50 vs 7.56 wt%, and for calcium oxide 12.50 vs 12.08 wt%. Differences reflect both preparation/aliquot and analytical effects. One sample cannot establish a correction for the suite.
+- **Earth.** GEMAS covers mixed soil over 0–10 cm (grazing) or 0–20 cm (agricultural), prepared below 2 mm, with total concentrations measured by wavelength-dispersive X-ray fluorescence. See the dataset's internal Data description §2.4.1 and [GEMAS quality-control documentation](https://gemas.eurogeosurveys.org/GEMAS.htm). Depth is collection support and must be retained as such. The source quality program and detector thresholds support the Earth measurements on their own terms.
+
+**Decision.** These sources support measured composition vectors for relative screening. No matched-material result establishes a transfer correction across APXS, the lunar compilation and GEMAS. Apply no universal correction. Preserve raw values, method, depth and uncertainty metadata. When ranking is implemented, report sensitivity to APXS relative calibration deviations and avoid awarding a definitive winner when plausible variations change the ranking. This codebook does not certify matching soil depth, mineral phases or suitability for a field experiment. A terrain or thermal join requires confirmed sample or station geometry. Mission anchors remain suitable for context.

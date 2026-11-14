@@ -9,8 +9,22 @@ from pathlib import Path
 
 from build_pilot import FIELDS, OUT, archive_bytes, earth_rows
 
+# Berger et al. (2020), Table 1; relative deviations also in the MER archive notes.
+# The detection limits are indicative, not specimen-level limits.
+APXS_QA = {
+    "SiO2": (1, 3), "TiO2": (.2, 20), "MgO": (1, 14),
+    "CaO": (.2, 7), "K2O": (.2, 15), "MnO": (.05, 8),
+}
+
+def gale_source_rows():
+    source = Path(__file__).resolve().parent / "work/gale.csv"
+    with source.open(encoding="cp1252", newline="") as file:
+        return {f"gale:{i}": row for i, row in enumerate(csv.DictReader(file), 2)}
+
+
 def planetary_rows(body):
     path = OUT / f"{body}.sqlite"
+    gale = gale_source_rows() if body == "mars" else {}
     with sqlite3.connect(path.as_uri() + "?mode=ro", uri=True) as db:
         db.row_factory = sqlite3.Row
         samples = db.execute("""
@@ -45,7 +59,21 @@ def planetary_rows(body):
             item["measurements"] = {k: observed[k] for k in FIELDS}
             item["location_role"] = ("mission anchor plus original rover coordinates pending CRS validation"
                                      if src == "gale_apxs" else "mission anchor")
-            item["cross_method_validation"] = "pending"
+            item["cross_method_validation"] = "no matched-material transfer correction established"
+            item["collection_depth_cm"] = None
+            item["chemistry_status"] = "reference_for_relative_composition"
+            if body == "mars":
+                below = [k for k, (limit, _) in APXS_QA.items() if observed[k]["value"] < limit]
+                item["below_apxs_reference_limits"] = below
+                if below:
+                    item["chemistry_status"] = "hold_for_six_component_comparison"
+                if src == "gale_apxs":
+                    row = gale[sample["id"]]
+                    assert row["Target"] == sample["target"]
+                    item["spectrum_width_ev"] = float(row["FWHM_FeKa_eV"])
+                    item["instrument_offset_cm"] = float(row["Offset_cm"])
+                    assert item["spectrum_width_ev"] <= 210
+
             yield item
 
 def validate_earth():
@@ -73,9 +101,15 @@ def main():
                      for area in sorted({row["area_id"] for row in items})}
               for body, items in refs.items()}
     earth = validate_earth()
+    assert len(refs["mars"]) == 149 and len(refs["moon"]) == 12
+    assert sum(r["chemistry_status"].startswith("hold") for r in refs["mars"]) == 12
+    assert earth["above_published_limits"] == earth["pilot_rows"] == 4343
     for body, items in refs.items():
         content = {"features": {k: {"label_he": label, "purpose_he": use, "unit": "wt%"}
                                 for k, (label, use) in FIELDS.items()}, "records": items}
+        if body == "mars":
+            content["apxs_reference_qa"] = {k: {"indicative_limit_wt_pct": limit, "relative_calibration_deviation_pct": dev}
+                                            for k, (limit, dev) in APXS_QA.items()}
         (OUT / f"{body}-soil-reference.json").write_text(json.dumps(
             content, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps({"references_by_site": counts, "earth_audit": earth}, indent=2))
