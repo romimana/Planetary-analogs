@@ -4,3 +4,8 @@
 !/work/build_mars.py
 !/work/atlas.html
 __pycache__/
+
+!/work/build_moon.py
+!/work/fetch_moon.py
+!/work/schema.sql
+!/work/views.sql

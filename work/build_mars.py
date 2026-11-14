@@ -19,67 +19,7 @@ DB = WORK / "mars.build.sqlite"
 DB.unlink(missing_ok=True)
 db = sqlite3.connect(DB)
 db.row_factory = sqlite3.Row
-db.executescript("""
-PRAGMA foreign_keys=ON;
-CREATE TABLE sources(
- id TEXT PRIMARY KEY, title TEXT NOT NULL, url TEXT NOT NULL,
- product_id TEXT, file_sha256 TEXT, use_note TEXT NOT NULL
-);
-CREATE TABLE areas(
- id TEXT PRIMARY KEY, body TEXT NOT NULL DEFAULT 'Mars', name TEXT NOT NULL,
- kind TEXT NOT NULL, mission TEXT, parent_id TEXT REFERENCES areas,
- latitude_deg REAL CHECK(latitude_deg BETWEEN -90 AND 90),
- longitude_e_deg REAL CHECK(longitude_e_deg>=0 AND longitude_e_deg<360),
- geometry_role TEXT NOT NULL, coordinate_note TEXT NOT NULL,
- source_id TEXT NOT NULL REFERENCES sources
-);
-CREATE TABLE time_windows(
- id TEXT PRIMARY KEY, area_id TEXT NOT NULL REFERENCES areas,
- kind TEXT NOT NULL, sol INTEGER, start_utc TEXT, end_utc TEXT, report_date TEXT,
- ls_deg REAL, ls_start_deg REAL, ls_end_deg REAL, sample_count INTEGER,
- time_standard TEXT NOT NULL, source_id TEXT NOT NULL REFERENCES sources
-);
-CREATE TABLE samples(
- id TEXT PRIMARY KEY, area_id TEXT NOT NULL REFERENCES areas,
- target TEXT NOT NULL, method TEXT NOT NULL, material TEXT, preparation_code TEXT,
- sol INTEGER, local_time_original TEXT, easting_m REAL, northing_m REAL,
- elevation_m_original REAL, quality TEXT, duplicate_status TEXT,
- source_id TEXT NOT NULL REFERENCES sources, record_locator TEXT NOT NULL,
- integration_hours REAL, instrument_norm REAL, fit_type TEXT,
- stratigraphy TEXT
-);
-CREATE TABLE observations(
- id INTEGER PRIMARY KEY, area_id TEXT NOT NULL REFERENCES areas,
- sample_id TEXT REFERENCES samples, window_id TEXT REFERENCES time_windows,
- parameter TEXT NOT NULL, value REAL, value_text TEXT, unit TEXT,
- uncertainty REAL, uncertainty_kind TEXT, evidence TEXT NOT NULL,
- spatial_support TEXT NOT NULL, baseline_m REAL,
- depth_top_m REAL, depth_bottom_m REAL,
- source_id TEXT NOT NULL REFERENCES sources, record_locator TEXT NOT NULL,
- note TEXT,
- CHECK((value IS NULL) != (value_text IS NULL)),
- CHECK(depth_top_m IS NULL OR depth_bottom_m IS NULL OR depth_top_m<=depth_bottom_m)
-);
-CREATE TABLE assets(
- area_id TEXT NOT NULL REFERENCES areas, title TEXT NOT NULL,
- kind TEXT NOT NULL, source_id TEXT NOT NULL REFERENCES sources, locator TEXT,
- PRIMARY KEY(area_id,title)
-);
-CREATE TABLE footprints(
- area_id TEXT PRIMARY KEY REFERENCES areas, native_crs TEXT NOT NULL,
- axis_order TEXT NOT NULL, vertical_reference TEXT, footprint_wkt TEXT NOT NULL,
- source_id TEXT NOT NULL REFERENCES sources, raster_pixels INTEGER NOT NULL,
- valid_pixels INTEGER NOT NULL, slope_pixels INTEGER NOT NULL
-);
-CREATE TABLE craters(
- crater_id TEXT PRIMARY KEY, latitude_deg REAL NOT NULL, longitude_e_deg REAL NOT NULL,
- diameter_km REAL NOT NULL, diameter_fit_sd_km REAL,
- ellipse_major_km REAL, ellipse_minor_km REAL, rim_arc_fraction REAL,
- interior_morphology TEXT, ejecta_morphology TEXT,
- source_id TEXT NOT NULL REFERENCES sources
-) WITHOUT ROWID;
-CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-""")
+db.executescript((WORK / "schema.sql").read_text(encoding="utf-8"))
 
 
 def add(table, **fields):
@@ -463,29 +403,7 @@ for key, value in {
 }.items():
     add("metadata", key=key, value=value)
 
-db.executescript("""
-CREATE INDEX observation_area_parameter ON observations(area_id,parameter);
-CREATE INDEX observation_sample ON observations(sample_id);
-CREATE INDEX observation_window ON observations(window_id);
-CREATE INDEX windows_area ON time_windows(area_id,kind);
-CREATE INDEX crater_diameter ON craters(diameter_km);
-CREATE INDEX crater_coordinates ON craters(latitude_deg,longitude_e_deg);
-CREATE VIEW science_observations AS
- SELECT * FROM observations WHERE evidence NOT IN ('outreach summary','derived from outreach data');
-CREATE VIEW area_coverage AS
- SELECT a.id,a.name,a.kind,a.mission,a.latitude_deg,a.longitude_e_deg,
-  (SELECT COUNT(*) FROM samples s WHERE s.area_id=a.id) AS chemistry_samples,
-  (SELECT COUNT(*) FROM science_observations o WHERE o.area_id=a.id) AS science_values,
-  (SELECT COUNT(*) FROM time_windows w WHERE w.area_id=a.id AND w.kind='daily outreach report') AS outreach_sols,
-  (SELECT COUNT(*) FROM assets m WHERE m.area_id=a.id) AS linked_assets
- FROM areas a;
-CREATE VIEW observation_provenance AS
- SELECT o.*, a.name AS area_name, sa.target, sa.method, sa.material, sa.preparation_code,
-        sa.quality, sa.duplicate_status, COALESCE(sa.sol,w.sol) AS sol, w.ls_deg, w.report_date,
-        s.title AS source_title, s.url AS source_url, s.product_id
- FROM observations o JOIN areas a ON a.id=o.area_id JOIN sources s ON s.id=o.source_id
- LEFT JOIN samples sa ON sa.id=o.sample_id LEFT JOIN time_windows w ON w.id=o.window_id;
-""")
+db.executescript((WORK / "views.sql").read_text(encoding="utf-8"))
 db.commit()
 
 assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
