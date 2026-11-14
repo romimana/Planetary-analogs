@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>אנלוגים פלנטריים</title>
+<style>
+:root{font:16px/1.55 "Segoe UI",Arial,sans-serif;color:#e6eef2;background:#0d1a22;color-scheme:dark}
+body{margin:0 auto;padding:2rem 1.25rem;max-width:1080px}
+h1{font-size:clamp(2rem,5vw,3.25rem);line-height:1.1;margin:.2em 0}
+h2{margin-bottom:.35rem}
+p{color:#b5c6ce}
+a{color:#a8e6cb}
+.panel{background:#152831;border:1px solid #34505b;border-radius:12px;padding:1rem;margin:1rem 0}
+.controls{display:grid;gap:.85rem;grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+label{display:flex;flex-direction:column;gap:.25rem}
+select,input{padding:.45rem;border:1px solid #58737f;border-radius:6px;background:#0e2028;color:inherit;font:inherit;min-width:0}
+input{max-width:6rem}
+details{margin-top:1rem}
+summary{cursor:pointer}
+.scroll{overflow:auto}
+table{text-align:right;width:100%;border-collapse:collapse}
+th,td{padding:.45rem .55rem;border-bottom:1px solid #395461}
+th{color:#c5eadd}
+small{color:#b5c6ce}
+</style>
+<h1>חיפוש אנלוגים בכדור הארץ</h1>
+<p>בחרו אזור, דגימה ומדד מוביל. הדירוג בפיילוט מבוסס על הרכב קרקע.</p>
+<section class="panel controls" aria-label="הגדרות התאמה">
+<label>עולם יעד<select id="body"><option value="mars">מאדים</option><option value="moon">הירח</option></select></label>
+<label>אזור<select id="area"></select></label>
+<label>דגימה<select id="sample"></select></label>
+<label>התאמה לפי<select id="mode"><option value="all">הרכב קרקע משוקלל</option><option disabled>תבליט · ממתין לנתונים תואמים</option><option disabled>חלון מזג אוויר · ממתין לנתונים תואמים</option></select></label>
+<label>מדד מוביל<select id="focus"><option value="">משקל שווה</option></select></label>
+</section>
+<section class="panel">
+<div id="ref"></div>
+<details><summary>משקלים לכל מדד</summary><div class="controls" id="weights"></div></details>
+</section>
+<section class="panel">
+<h2>הדגימות הקרובות ביותר</h2>
+<p id="status" aria-live="polite"></p>
+<div class="scroll"><table><thead><tr><th scope="col">דגימה</th><th scope="col">מדינה במקור</th><th scope="col">מפה</th><th scope="col">עומק</th><th scope="col">מרחק</th><th scope="col">תרומה עיקרית למרחק</th></tr></thead><tbody id="results"></tbody></table></div>
+<details><summary>ערכים והשוואה מול התוצאה הראשונה</summary><div id="comparison" class="scroll"></div></details>
+<p><a id="earthSource">מקור דגימות כדור הארץ · GEMAS / BGR</a></p>
+</section>
+<script id="payload" type="application/json">__PILOT_DATA__</script>
+<script>
+const data = JSON.parse(document.querySelector('#payload').textContent);
+const get = id => document.getElementById(id);
+const keys = Object.keys(data.features);
+const controls = {};
+function link(label,url){
+    const a = document.createElement('a');
+    a.textContent=label;
+    a.href=url;
+    a.target='_blank';
+    a.rel='noopener';
+    return a;
+}
+for(const key of keys){
+    const [name,reason] = data.features[key];
+    get('focus').add(new Option(name,key));
+    get('mode').add(new Option(name+' בלבד',key));
+    const label = document.createElement('label');
+    label.textContent=name;
+    const input = document.createElement('input');
+    input.type='number';
+    input.min=0;
+    input.max=20;
+    input.step=1;
+    input.value=1;
+    input.addEventListener('input',render);
+    const note=document.createElement('small');
+    note.textContent=reason;
+    label.append(input,note);
+    get('weights').append(label);
+    controls[key]=input;
+}
+get('earthSource').href=data.source;
+function loadAreas(){
+    const entries=data.refs.filter(r=>r.body===get('body').value);
+    const names=new Map(entries.map(r=>[r.area,r.name]));
+    get('area').replaceChildren(...Array.from(names,([id,name])=>new Option(id.at(-1)+' · '+name,id)));
+    loadSamples();
+}
+function loadSamples(){
+    get('sample').replaceChildren(...data.refs.filter(r=>r.area===get('area').value)
+        .map(r=>new Option(r.target+(r.sol===null?'':' · סול '+r.sol),r.id)));
+    render();
+}
+function rank(ref, rows, activeWeights, scales){
+    const fields=Object.keys(activeWeights).filter(k=>activeWeights[k]>0);
+    const total=fields.reduce((sum,k)=>sum+activeWeights[k],0);
+    if(!total)return [];
+    return rows.map(row=>{
+        const parts=fields.map(k=>[k,activeWeights[k]*((row.values[k]-ref.values[k])/scales[k])**2]);
+        const distance=Math.sqrt(parts.reduce((sum,p)=>sum+p[1],0)/total);
+        const driver=parts.reduce((best,p)=>p[1]>best[1]?p:best);
+        return {row,distance,driver:driver[0]};
+    }).sort((a,b)=>a.distance-b.distance || a.row.id.localeCompare(b.row.id));
+}
+function render(){
+    const ref=data.refs.find(r=>r.id===get('sample').value);
+    get('ref').replaceChildren(document.createTextNode(ref.name+' · '+ref.target+' · '+ref.method+' · '),link('מקור הדגימה',ref.url));
+    const mode=get('mode').value;
+    const weights=Object.fromEntries(keys.map(k=>[k, mode==='all'?Math.max(0,Math.min(20,Number(controls[k].value)||0)):Number(mode===k)]));
+    const results=rank(ref,data.earth,weights,data.scales);
+    get('status').textContent=results.length?
+        new Intl.NumberFormat('he').format(results.length)+' דגימות מדודות באירופה. מרחק קטן מציין הרכב קרוב ליעד.':
+        'יש לתת לפחות למדד אחד משקל חיובי.';
+    get('results').replaceChildren();
+    get('comparison').replaceChildren();
+    for(const entry of results.slice(0,10)){
+        const {row,distance,driver}=entry;
+        const tr=get('results').insertRow();
+        const sample=tr.insertCell();
+        sample.textContent=row.id;
+        sample.title=row.locator;
+        tr.insertCell().textContent=row.country;
+        tr.insertCell().append(link(row.lat.toFixed(4)+', '+row.lon.toFixed(4),
+            'https://www.openstreetmap.org/?mlat='+row.lat+'&mlon='+row.lon+'#map=12/'+row.lat+'/'+row.lon));
+        tr.insertCell().textContent='0–'+row.depth+' ס״מ';
+        tr.insertCell().textContent=distance.toFixed(3);
+        tr.insertCell().textContent=data.features[driver][0];
+    }
+    if(results.length){
+        const table=document.createElement('table');
+        const header=table.createTHead().insertRow();
+        for(const title of ['מדד','יעד · % משקל','כדור הארץ · % משקל','משקל בדירוג']){
+            const th=document.createElement('th');th.scope='col';th.textContent=title;header.append(th);
+        }
+        const body=table.createTBody();
+        for(const key of keys){
+            const tr=body.insertRow();
+            for(const value of [data.features[key][0],ref.values[key],results[0].row.values[key],weights[key]]){
+                tr.insertCell().textContent=value;
+            }
+        }
+        get('comparison').append(table);
+    }
+}
+get('body').addEventListener('change',loadAreas);
+get('area').addEventListener('change',loadSamples);
+get('sample').addEventListener('change',render);
+get('mode').addEventListener('change',render);
+get('focus').addEventListener('change',()=>{
+    const focus=get('focus').value;
+    get('mode').value='all';
+    for(const key of keys)controls[key].value=key===focus?4:1;
+    render();
+});
+loadAreas();
+</script>
+</html>
