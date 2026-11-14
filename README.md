@@ -34,3 +34,5 @@ Outputs are `outputs/moon.sqlite` and `outputs/Moon Atlas.html`. See the [Moon m
 Run `python audit.py` after both builds. See the [audit and Earth matching plan](AUDIT.md).
 
 [Analog matching pilot](PILOT.md)
+
+[Curated soil references and codebook](CODEBOOK.md)
