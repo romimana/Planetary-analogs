@@ -1,0 +1,21 @@
+{
+  "earth": {
+    "samples": 4024,
+    "terrain": 4024,
+    "geology": 3604,
+    "terrain_and_geology": 3604
+  },
+  "mars": {
+    "samples": 137,
+    "terrain": 137,
+    "geology": 137,
+    "terrain_and_geology": 137
+  },
+  "moon": {
+    "samples": 12,
+    "terrain": 12,
+    "geology": 12,
+    "terrain_and_geology": 12
+  },
+  "sha256": "5ab7a44873fea62553e46c7ac423f7a226875d7164b51d378951d10e9d83ec42"
+}

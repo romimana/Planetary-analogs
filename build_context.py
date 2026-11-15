@@ -58,7 +58,7 @@ def distance(a, b, radius):
     h = math.sin((lat2-lat1)/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin((lon2-lon1)/2)**2
     return 2 * radius * math.asin(math.sqrt(min(1,h)))
 
-def terrain(body, lat, lon):
+def terrain(body, lat, lon, *, patch_metric=None):
     radius = RADII[body]
     if body == "moon":
         band = "00n_30n" if lat >= 0 else "30s_00s"
@@ -102,6 +102,8 @@ def terrain(body, lat, lon):
     assert np.all(count > 0)
     common = (np.bincount(bins.ravel(),weights=pixels.ravel(),minlength=100)/count).reshape(10,10)
     common_metrics = terrain_metrics(common,500,500)
+    if patch_metric is not None:
+        common_metrics["largest_gentle_patch_fraction"] = patch_metric(common)
     return dict(url=url,label_url=base+stem+".lbl",support="5 km centered square, native grid",
                 cell_m=[dx,dy],baseline_m=[2*dx,2*dy],pixels=pixels.size,
                 **terrain_metrics(pixels,dx,dy),

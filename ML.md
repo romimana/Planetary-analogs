@@ -1,5 +1,17 @@
 # Analog matching datasets
 
+## Chemistry, terrain and mapped geology
+
+Use [ml-geology.sqlite](data/ml-geology.sqlite) for the expanded modeling data. It contains the full archive plus `earth_model_profiles`, `mars_model_profiles`, and `moon_model_profiles`. These views expose chemistry, terrain and mapped geology. Colab loads this database by default and verifies the checksum in [the coverage report](data/ml-geology.json). The local build also includes GEMAS under its source terms.
+
+GIS reads [NASADEM HGT](https://www.earthdata.nasa.gov/data/catalog/lpcloud-nasadem-hgt-001) windows for all Earth candidates. At tile boundaries it combines valid elevation sums and counts before calculating the 500 m bin means, assigns each boundary posting once, and requires 95% source posting validity in each of the 100 bins. Each Earth result carries the source window URL, row and column bounds and SHA-256 of its little-endian int16 values followed by its Boolean valid mask. The row-level SHA-256 is the hash of that window manifest. Mars uses [MOLA](https://pds-geosciences.wustl.edu/missions/mgs/megdr.html) and the Moon uses [SLDEM2015](https://pgda.gsfc.nasa.gov/products/54), with source hashes and windows in planetary provenance.
+
+`largest_gentle_patch_fraction` is the size of the largest four-neighbor connected region with slope at or below 10° divided by 64. The 64 interior 500 m cells support the common 1 km central-difference slope calculation. One means all interior cells are in the same gentle region. This is a regional screening metric. At this scale almost all of the sampled Mars windows have values near one.
+
+GIS assigns Earth geology from the containing 0.5° [GLiM cell](https://doi.org/10.1594/PANGAEA.788537) (Hartmann and Moosdorf, 2012, CC BY 3.0). Unclassified, water and ice cells yield no lithology. In Mars and Moon GIS the point is transformed to the source map CRS and joined to the containing [USGS Mars SIM 3292 polygon](https://doi.org/10.3133/sim3292) (1:20M) or [Unified Moon v2 polygon](https://astrogeology.usgs.gov/search/map/Moon/Geology/Unified_Geologic_Map_of_the_Moon_GIS_v2/) (1:5M). Mars uses the pinned mirror of the original USGS shapefile identified in the builder. Moon positions use lunar body-fixed longitude and the published spherical map projection. The mapped unit is regional context. A sample's material is kept separately, and mission-anchor locations represent the area around landing. The three map legends use distinct categories. Colab can require a mapped unit as a coverage filter and keeps map codes outside the numeric distance.
+
+Reproduce after building the full archive. Install `rasterio==1.5.2 pyproj==3.8.0 pyshp==3.1.8 shapely==2.2.0`, run `python enrich_terrain.py`, then `python build_geology_ml.py`. To include European records locally run `python enrich_terrain.py --local` and `python build_geology_ml.py --local`. NASADEM coverage is approximately 56°S to 60°N. Sites outside that band are still present with missing terrain.
+
 See [feature coverage and matching priorities](FEATURES.md) for the per-body missing-value audit.
 
 ## Full dataset with missing values
