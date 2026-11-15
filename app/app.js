@@ -436,5 +436,6 @@ byId("weight-profile").addEventListener("change", event => {
 });
 for (const key of groups) {
   form.elements[key].addEventListener("input", () => { byId("weight-profile").value = "custom"; });
+  form.elements[key].addEventListener("invalid", () => { byId("custom-weights").open = true; });
 }
 setBody(body);

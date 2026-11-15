@@ -42,10 +42,10 @@
         <p class="hint target-context" id="target-context"></p>
         <p class="hint" id="target-recommendation" hidden></p>
         <div id="target-sources" class="candidate-sources"></div>
-        <h3 class="settings-title">Comparison weights</h3>
+        <h3 class="settings-title">Comparison settings</h3>
         <label class="field">Profile <select id="weight-profile">
           <option value="terrainOnly">Terrain only</option><option value="mixed">Mixed</option><option value="chemistry">Geochemistry-oriented</option>
-          <option value="terrain">Terrain-oriented</option><option value="custom">Custom</option>
+          <option value="terrain">Terrain-oriented</option><option value="custom" disabled>Custom weights</option>
         </select></label>
         <label class="field">Earth sites <select id="site-pool">
           <option value="">All eligible sites</option><option value="terrain">Terrain survey windows</option>
@@ -53,12 +53,15 @@
         </select></label>
         <label class="field">Earth region <select id="region"></select></label>
         <label class="checkbox"><input id="regional-view" type="checkbox"> Best match per country or territory</label>
+        <details class="config" id="custom-weights">
+          <summary>Change weights</summary>
         <div class="weights">
           <label>Chemistry <input name="chemistry" type="number" min="0" max="100" step="1" value="0"></label>
           <label>Terrain <input name="terrain" type="number" min="0" max="100" step="1" value="100"></label>
           <label>Mapped geology <input name="geology" type="number" min="0" max="100" step="1" value="0"></label>
           <label>Sunlight <input name="solar" type="number" min="0" max="100" step="1" value="10" disabled></label>
         </div>
+        </details>
         <p class="hint" id="geology-note"></p>
         <details class="config">
           <summary>Chemistry features</summary>
@@ -99,6 +102,7 @@
     <h2>Methods &amp; data</h2>
     <p>Ranks are screening results. Chemistry compares ratios, terrain compares a 5 × 5 km window, and geology compares mapped units. Solar scenarios compare the geometric projection onto a horizontal panel.</p>
     <div class="method-links">
+      <a href="https://github.com/romimana/Planetary-analogs/blob/main/GUIDE_HE.md" target="_blank" rel="noopener">מדריך לאתר בעברית ↗</a>
       <a href="https://github.com/romimana/Planetary-analogs/blob/main/DATA_CODEBOOK.md" target="_blank" rel="noopener">Data codebook ↗</a>
       <a href="https://github.com/romimana/Planetary-analogs/blob/main/GEOLOGY_MATCHING.md" target="_blank" rel="noopener">Geology rubric ↗</a>
       <a href="https://github.com/romimana/Planetary-analogs/blob/main/data/solar-audit.json" target="_blank" rel="noopener">Solar validation ↗</a>
