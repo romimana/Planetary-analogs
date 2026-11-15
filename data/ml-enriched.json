@@ -1,0 +1,62 @@
+{
+  "solar_sites_by_body": [
+    [
+      "earth",
+      4024,
+      96576
+    ],
+    [
+      "mars",
+      137,
+      3288
+    ],
+    [
+      "moon",
+      12,
+      96
+    ]
+  ],
+  "earth_wind_sites": [
+    [
+      286
+    ]
+  ],
+  "earth_moisture_sites": [
+    [
+      286
+    ]
+  ],
+  "mars_wind_windows": [
+    [
+      "preliminary",
+      36
+    ]
+  ],
+  "mars_wind_samples": [
+    [
+      "preliminary",
+      9
+    ]
+  ],
+  "earth_grain_samples": [
+    [
+      2285
+    ]
+  ],
+  "mars_texture_samples": [
+    [
+      4
+    ]
+  ],
+  "moon_grain_samples": [
+    [
+      "same_aliquot",
+      1
+    ],
+    [
+      "same_parent",
+      4
+    ]
+  ],
+  "sha256": "b30f125d6c512031610bec3c0401e4b8fc48cee75d57916d01a4798eea063a4c"
+}
