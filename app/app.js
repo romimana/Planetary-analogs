@@ -25,7 +25,7 @@ const detailTiles = /^https?:/.test(location.protocol) ? L.tileLayer("https://ti
   pane: "detailTiles", maxNativeZoom: 19, maxZoom: 19,
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }) : null;
-const presets = {mixed: [45, 45, 10, 10], chemistry: [70, 20, 10, 10], terrain: [20, 70, 10, 10]};
+const presets = {mixed: [35, 40, 25, 10], chemistry: [55, 20, 25, 10], terrain: [20, 55, 25, 10]};
 let activeSettings;
 let activeTarget;
 let activeBody;
@@ -57,7 +57,8 @@ function updateSettings() {
   byId("target-context").textContent = `${geography} · ${target.location_role}`;
   form.elements.geology.disabled = !supported;
   byId("geology-note").textContent = supported ?
-    "Geology uses the map-unit rubric." : "No comparable geology score for this target. Active weights will be normalized.";
+    "Geology compares regional map units. Review the original map labels in each result." :
+    "No comparable geology score for this target. Active weights will be normalized.";
   byId("solar-options").hidden = !solarToggle.checked;
   form.elements.solar.disabled = !solarToggle.checked;
 }
@@ -166,6 +167,10 @@ function detailLine(label, target, candidate, distance) {
   return tr;
 }
 
+function geologyLabel(row) {
+  return row.geology_unit ? `${row.geology_description} (${row.geology_unit}) · ${row.geology_product}` : "Unavailable";
+}
+
 function renderSelected() {
   const match = shortlist[selected];
   byId("candidate-detail").hidden = !match;
@@ -189,8 +194,14 @@ function renderSelected() {
       featureDefinitions[index][0], formattedFeature(index, activeTarget.values[index]),
       formattedFeature(index, row.values[index]), `${formatScore(distance)} scaled`
     ));
-    lines.push(detailLine("Mapped geology", activeTarget.geology_description || "Unavailable",
-      row.geology_description || "Unavailable", distances.geology === null ? "—" : formatScore(distances.geology)));
+    lines.push(detailLine("Scored map units", geologyLabel(activeTarget), geologyLabel(row),
+      distances.geology === null ? "—" : formatScore(distances.geology)));
+    const bedrock = data.irishBedrock.rows[row.site_id];
+    if (bedrock) {
+      const [, unit, stratigraphy, lithology, name, description] = bedrock;
+      const codes = [unit, stratigraphy, lithology].filter(Boolean).join(" / ");
+      lines.push(detailLine("Irish bedrock reference", "—", `${name} · ${description} (${codes})`, "Reference"));
+    }
     if (distances.solar !== null) {
       const targetSun = activeTarget.solar[activeSettings.targetTime];
       const earthSun = row.solar[activeSettings.earthTime];
@@ -204,6 +215,7 @@ function renderSelected() {
       el("span", `Chemistry source · ${row.source_id}`)];
     if (row.geology_url) sources.push(sourceLink("Earth geology source", row.geology_url));
     if (activeTarget.geology_url) sources.push(sourceLink("Target geology source", activeTarget.geology_url));
+    if (bedrock) sources.push(sourceLink(`Irish bedrock · polygon record ${bedrock[0]}`, data.irishBedrock.url));
     if (data.radar[row.site_id]) sources.push(sourceLink("CSA RADARSAT-1 scene", data.radar[row.site_id].source));
     byId("candidate-sources").replaceChildren(...sources);
   }

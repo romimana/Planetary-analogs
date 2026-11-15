@@ -47,17 +47,18 @@ function rankAnalogs(data, body, target, settings) {
   };
   const targetVector = vector(target);
   if (!targetVector) return {ranked: [], weights, geoColumn, error: "The target lacks a selected feature."};
-  const candidates = data.earth.rows.flatMap(row => {
+  const numericCandidates = data.earth.rows.flatMap(row => {
     const values = vector(row);
-    const geology = data.rubric[row.geology_unit]?.[geoColumn];
-    const solarAvailable = !weights.solar ||
-      (Number.isFinite(row.solar[settings.earthTime]) && Number.isFinite(target.solar[settings.targetTime]));
-    return values && solarAvailable && (!weights.geology || Number.isFinite(geology)) ? [{row, values, geology}] : [];
+    return values ? [{row, values, geology: data.rubric[row.geology_unit]?.[geoColumn]}] : [];
   });
+  const targetSun = target.solar[settings.targetTime];
+  const candidates = numericCandidates.filter(({row, geology}) =>
+    (!weights.geology || Number.isFinite(geology)) &&
+    (!weights.solar || (Number.isFinite(row.solar[settings.earthTime]) && Number.isFinite(targetSun))));
   if (!candidates.length) return {ranked: [], weights, geoColumn, error: "No Earth candidates meet the selected requirements."};
 
   const scale = indices.map((_, i) => {
-    const sorted = candidates.map(c => c.values[i]).sort((a, b) => a - b);
+    const sorted = numericCandidates.map(c => c.values[i]).sort((a, b) => a - b);
     const iqr = percentile(sorted, 0.75) - percentile(sorted, 0.25);
     return iqr > 1e-12 ? iqr : 1;
   });
@@ -65,7 +66,7 @@ function rankAnalogs(data, body, target, settings) {
     const standardized = candidate.values.map((value, i) => Math.abs(value - targetVector[i]) / scale[i]);
     const rms = values => values.length ? Math.sqrt(values.reduce((sum, v) => sum + v * v, 0) / values.length) : 0;
     const bounded = value => value / (1 + value);
-    const solar = weights.solar ? Math.abs(candidate.row.solar[settings.earthTime] - target.solar[settings.targetTime]) : null;
+    const solar = weights.solar ? Math.abs(candidate.row.solar[settings.earthTime] - targetSun) : null;
     const distances = {
       chemistry: weights.chemistry ? bounded(rms(standardized.slice(0, chemIndices.length))) : null,
       terrain: weights.terrain ? bounded(rms(standardized.slice(chemIndices.length))) : null,

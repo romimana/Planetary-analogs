@@ -33,7 +33,7 @@ def add_expansion(result):
             weather.setdefault(site, {})[stamp] = value
         fields = ",".join(FIELDS)
         for record in db.execute(f"""SELECT id,site_id,region,latitude,longitude,material,source_id,
-            chemistry_source_url,geology_unit,geology_description,geology_url,{fields}
+            chemistry_source_url,geology_unit,geology_description,geology_product,geology_url,geology_locator,{fields}
             FROM earth_model_profiles ORDER BY id"""):
             row = dict(record)
             row["values"] = [row.pop(name) for name in FIELDS]
@@ -51,11 +51,11 @@ def read_payload():
         for body in ("earth", "mars", "moon"):
             if body == "earth":
                 query = f"""SELECT p.id,p.site_id,p.region,p.latitude,p.longitude,p.material,
-                    p.geology_unit,p.geology_description,p.geology_url,p.source_id,{fields}
+                    p.geology_unit,p.geology_description,p.geology_product,p.geology_url,p.geology_locator,p.source_id,{fields}
                     FROM earth_model_profiles p ORDER BY p.id"""
             else:
                 query = f"""SELECT p.id,p.area,p.latitude,p.longitude_e AS longitude,p.material,
-                    p.geology_unit,p.geology_description,p.geology_url,p.location_role,s.name,{fields}
+                    p.geology_unit,p.geology_description,p.geology_product,p.geology_url,p.geology_locator,p.location_role,s.name,{fields}
                     FROM {body}_model_profiles p JOIN planet_samples s USING(id) ORDER BY p.id"""
             rows = [dict(row) for row in db.execute(query)]
             times = [stamp for stamp, in db.execute("SELECT DISTINCT utc FROM solar_scenarios WHERE body=? ORDER BY 1",
@@ -73,6 +73,9 @@ def read_payload():
             for site, scene, url in db.execute("SELECT site_id,scene,source_url FROM earth_radar ORDER BY scene")
         }
     expansion_sha = add_expansion(result)
+    irish_bedrock = json.loads((ROOT / "data/irish-bedrock.json").read_text(encoding="utf-8"))
+    if irish_bedrock["earthExpansionSha256"] != expansion_sha:
+        raise ValueError("Irish bedrock GIS join refers to a different Earth expansion snapshot")
     rubric = {}
     for line in (ROOT / "GEOLOGY_MATCHING.md").read_text(encoding="utf-8").splitlines():
         if line.startswith("| ") and len(line.split("|")) == 6:
@@ -81,7 +84,8 @@ def read_payload():
                 rubric[code] = [float(moon), float(mars)]
     if len(rubric) != 13:
         raise ValueError("Expected 13 documented map-unit penalties")
-    return {**result, "rubric": rubric, "sha256": actual, "expansionSha256": expansion_sha}
+    return {**result, "rubric": rubric, "sha256": actual, "expansionSha256": expansion_sha,
+            "irishBedrock": irish_bedrock}
 
 def main():
     source = (APP / "template.html").read_text(encoding="utf-8")
