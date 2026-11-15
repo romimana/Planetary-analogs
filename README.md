@@ -6,6 +6,8 @@ Start with the [ML dataset and codebook](ML.md). The snapshot includes Earth can
 
 ## Interactive analog explorer
 
+[Deploy to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fromimana%2FPlanetary-analogs) to create a public URL on the Free web service plan. Paste your [Gemini API key](https://aistudio.google.com/app/apikey) into the Render setup field for `GEMINI_API_KEY`. It stays in the service environment. Once the deploy is live, open the service URL, choose an analog, and click **Explain with Gemini**. For later Git updates, use **Manual Deploy** in the Render dashboard.
+
 Download [app/index.html](app/index.html) from GitHub and open it in a browser. The file bundles the public comparison data, ranking engine, and overview map. Terrain only is the default, with optional measured chemistry and mapped geology. An internet connection is needed to open Google Earth and linked sources. See [the demo guide](app/README.md) and [the terrain survey](TERRAIN_SURVEY.md).
 
 Open [the data exploration notebook in Colab](https://colab.research.google.com/github/romimana/Planetary-analogs/blob/main/explore_data.ipynb) to inspect the SQLite tables with pandas, review missing values, and select comparable features. It loads the latest published snapshot by default. Set `DATA_REF` to a commit SHA for reproducibility.
