@@ -3,6 +3,7 @@ const data = JSON.parse(document.querySelector("#app-data").textContent);
 const byId = id => document.getElementById(id);
 const form = byId("controls");
 const targetSelect = byId("target");
+const targetArea = byId("target-area");
 const solarToggle = byId("use-solar");
 const groupLabels = {chemistry: "Chemistry", terrain: "Terrain", geology: "Mapped geology", solar: "Sunlight"};
 const countries = {
@@ -57,8 +58,12 @@ function currentTarget() {
 function updateSettings() {
   const target = currentTarget();
   const supported = geologyColumn(body, target.geology_unit) !== null;
-  const geography = target.geology_description || "Map unit unavailable";
-  byId("target-context").textContent = `${geography} · ${target.location_role}`;
+  const sol = target.sample.sol == null ? "" : ` · Sol ${target.sample.sol}`;
+  byId("target-context").textContent = `${target.name} · ${target.material}${sol} · ${target.location_role}`;
+  const sources = [];
+  if (target.sample.chemistry_url) sources.push(sourceLink("Measurement source", target.sample.chemistry_url));
+  if (target.sample.location_source) sources.push(sourceLink("Location source", target.sample.location_source));
+  byId("target-sources").replaceChildren(...sources);
   form.elements.geology.disabled = !supported;
   byId("geology-note").textContent = supported ?
     "Geology compares regional map units. Review the original map labels in each result." :
@@ -71,10 +76,30 @@ function setBody(next) {
   body = next;
   document.querySelectorAll("[data-body]").forEach(button =>
     button.setAttribute("aria-pressed", button.dataset.body === body));
-  const preferred = body === "mars" ? "gusev:11" : "apollo12:soil16:line 12";
-  selectOptions(targetSelect, data[body].rows, row => row.id,
-    row => `${row.area} · ${row.name} · ${row.id}`, preferred);
-  selectOptions(byId("target-time"), data[body].times, (_, i) => i, displayTime);
+  const areas = [...new Set(data[body].rows.map(row => row.area))].sort();
+  selectOptions(targetArea, areas, area => area, area => area, body === "mars" ? "Gusev Crater" : "Apollo 12");
+  selectArea();
+}
+
+function representative(rows) {
+  const stats = featureDefinitions.map((_, index) => {
+    const sorted = rows.map(row => row.values[index]).filter(Number.isFinite).sort((a, b) => a - b);
+    return sorted.length ? [percentile(sorted, .5), sorted.at(-1) - sorted[0] || 1] : null;
+  });
+  const distance = row => stats.reduce((sum, stat, index) => {
+    if (!stat) return sum;
+    const value = row.values[index];
+    return sum + (Number.isFinite(value) ? Math.abs(value - stat[0]) / stat[1] : 1);
+  }, 0);
+  return rows.map(row => ({row, distance: distance(row)}))
+    .sort((a, b) => a.distance - b.distance || a.row.id.localeCompare(b.row.id))[0].row;
+}
+
+function selectArea() {
+  const rows = data[body].rows.filter(row => row.area === targetArea.value);
+  const row = representative(rows);
+  selectOptions(targetSelect, rows, sample => sample.id,
+    sample => `${sample.name} · ${sample.id}${sample.id === row.id ? " · representative" : ""}`, row.id);
   updateSettings();
   rank();
 }
@@ -85,8 +110,6 @@ function readSettings() {
     useSolar: solarToggle.checked,
     pool: byId("site-pool").value,
     region: byId("region").value,
-    targetTime: Number(byId("target-time").value),
-    earthTime: Number(byId("earth-time").value),
     chemIndices: Array.from(document.querySelectorAll("#chem-options input:checked"), x => Number(x.value))
   };
 }
@@ -97,13 +120,20 @@ function rank() {
   activeTarget = currentTarget();
   activeBody = body;
   result = rankAnalogs(data, body, activeTarget, activeSettings);
-  shortlist = result.ranked.slice(0, 10);
+  const regions = new Set();
+  const byRegion = byId("regional-view").checked && !activeSettings.region;
+  shortlist = (byRegion ? result.ranked.filter(({row}) => {
+    if (row.region === "GRID" || regions.has(row.region)) return false;
+    regions.add(row.region);
+    return true;
+  }) : result.ranked).slice(0, 10);
+  byId("results-title").textContent = byRegion ? "Closest matches by region" : "Closest analogs";
   selected = 0;
   zoom = false;
   const coverage = Object.entries(result.eligibleByRegion || {}).map(([iso, n]) => `${countries[iso] || iso} ${n.toLocaleString("en-US")}`).join(" · ");
   byId("regional-coverage").textContent = coverage ? `Eligible by region · ${coverage}` : "";
   byId("results-status").textContent = result.error || (!shortlist.length ? "No eligible sites in this region." :
-    `Top ${shortlist.length} of ${result.ranked.length.toLocaleString("en-US")} eligible Earth sites · ${activeTarget.name}`);
+    `${byRegion ? `${shortlist.length} regions from` : `Top ${shortlist.length} of`} ${result.ranked.length.toLocaleString("en-US")} eligible Earth sites · ${activeTarget.name}`);
   renderResults();
   renderSelected();
   fitMap();
@@ -125,6 +155,7 @@ function renderResults() {
     site.append(button);
     const position = el("td", countries[row.region] || row.region);
     position.append(el("span", coordinates(row), "site-position"));
+    if (resultRow.sun) position.append(el("span", displayTime(data.earth.times[resultRow.sun.earthTime]), "site-position"));
     line.append(site, position, el("td", formatScore(score), "metric"));
     tbody.append(line);
   });
@@ -176,8 +207,48 @@ function geologyLabel(row) {
   return row.geology_unit ? `${row.geology_description} (${row.geology_unit}) · ${row.geology_product}` : "Unavailable";
 }
 
+const aiOptions = {expectedInputs: [{type: "text", languages: ["en"]}],
+  expectedOutputs: [{type: "text", languages: ["en"]}]};
+let explanation = null;
+let explanationVersion = 0;
+
+function explainMatch(match) {
+  const {row, distances} = match;
+  const ordered = [...match.featureDistances].sort((a, b) => a[1] - b[1]);
+  const features = ordered.map(([index, distance]) => ({
+    name: featureDefinitions[index][0],
+    target: formattedFeature(index, activeTarget.values[index]),
+    earth: formattedFeature(index, row.values[index]),
+    scaledDistance: Number(formatScore(distance)),
+    comparison: index < chemistry.length ? "relative chemistry ratio" : "terrain"
+  }));
+  const strongest = features[0];
+  const weakest = features.at(-1);
+  const solar = match.sun ? {
+    planetUTC: data[activeBody].times[match.sun.targetTime],
+    earthUTC: data.earth.times[match.sun.earthTime],
+    projectionDifference: Number(formatScore(distances.solar))
+  } : null;
+  const target = {area: activeTarget.area, name: activeTarget.name, material: activeTarget.material,
+    position: activeTarget.location_role, sol: activeTarget.sample.sol, preparation: activeTarget.sample.preparation,
+    record: activeTarget.sample.chemistry_locator, geology: activeTarget.geology_description};
+  const earth = {name: row.area || row.id, country: countries[row.region] || row.region,
+    material: row.material, geology: row.geology_description};
+  explanation = {target, earth, score: Number(formatScore(match.score)), weights: result.weights,
+    distances, features, solar};
+  const comparison = strongest ? `Closest numeric feature: ${strongest.name} (${strongest.comparison}).` : "";
+  const gap = weakest && weakest !== strongest ? ` Largest scaled feature gap: ${weakest.name}.` : "";
+  const mapped = distances.geology === null ? "" :
+    ` Mapped geology penalty: ${formatScore(distances.geology)}.`;
+  const sunlight = solar ? ` Best sunlit reference pair: Earth ${displayTime(solar.earthUTC)} / target ${displayTime(solar.planetUTC)}.` : "";
+  byId("match-summary").textContent = `${target.name} is a ${target.material} record from ${target.area}. ${comparison}${gap}${mapped}${sunlight}`;
+}
+
 function renderSelected() {
   const match = shortlist[selected];
+  explanationVersion++;
+  explanation = null;
+  byId("ai-summary").textContent = "";
   byId("candidate-detail").hidden = !match;
   byId("map-focus").disabled = !match;
   byId("map-overview").setAttribute("aria-pressed", !zoom);
@@ -208,17 +279,20 @@ function renderSelected() {
       lines.push(detailLine("Irish bedrock reference", "—", `${name} · ${description} (${codes})`, "Reference"));
     }
     if (distances.solar !== null) {
-      const targetSun = activeTarget.solar[activeSettings.targetTime];
-      const earthSun = row.solar[activeSettings.earthTime];
+      const {targetTime, earthTime} = match.sun;
+      const targetSun = activeTarget.solar[targetTime];
+      const earthSun = row.solar[earthTime];
       const time = (value, stamp) => `${value.toFixed(3)} · ${displayTime(stamp)}`;
-      lines.push(detailLine("Horizontal solar projection", time(targetSun, data[activeBody].times[activeSettings.targetTime]),
-        time(earthSun, data.earth.times[activeSettings.earthTime]), formatScore(distances.solar)));
+      lines.push(detailLine("Best daylight pair · UTC", time(targetSun, data[activeBody].times[targetTime]),
+        time(earthSun, data.earth.times[earthTime]), formatScore(distances.solar)));
     }
     byId("feature-details").replaceChildren(...lines);
     const sources = row.terrain_url ? [
       sourceLink("Copernicus elevation tile", row.terrain_url),
       sourceLink("ESA WorldCover tile", row.cover_url),
-      el("span", `Land cover sample · ${Math.round(row.bare_fraction*100)}% bare/sparse · ${Math.round(row.ice_fraction*100)}% snow/ice`)
+      el("span", `Land cover sample · ${Math.round(row.bare_fraction*100)}% bare/sparse · ${Math.round(row.ice_fraction*100)}% snow/ice`),
+      ...(row.cover_filter === "open-vegetation" ?
+        [el("span", `Open land · ${Math.round(row.open_land_fraction*100)}% including grass and shrubs`)] : [])
     ] : [row.chemistry_source_url ?
       sourceLink(`Chemistry source · ${row.source_id}`, row.chemistry_source_url) :
       el("span", `Chemistry source · ${row.source_id}`)];
@@ -228,6 +302,7 @@ function renderSelected() {
     if (bedrock) sources.push(sourceLink(`Irish bedrock · polygon record ${bedrock[0]}`, data.irishBedrock.url));
     if (data.radar[row.site_id]) sources.push(sourceLink("CSA RADARSAT-1 scene", data.radar[row.site_id].source));
     byId("candidate-sources").replaceChildren(...sources);
+    explainMatch(match);
   }
   drawMap();
 }
@@ -277,14 +352,15 @@ chemistry.forEach(([name], index) => {
   byId("chem-options").append(label);
 });
 byId("chem-options").addEventListener("change", rank);
-selectOptions(byId("earth-time"), data.earth.times, (_, i) => i, displayTime, "1");
 document.querySelectorAll("[data-body]").forEach(button =>
   button.addEventListener("click", () => setBody(button.dataset.body)));
+targetArea.addEventListener("change", selectArea);
 targetSelect.addEventListener("change", () => {updateSettings(); rank();});
 solarToggle.addEventListener("change", () => {
   updateSettings();
   const profile = byId("weight-profile");
   if (profile.value !== "custom") profile.dispatchEvent(new Event("change"));
+  else rank();
 });
 form.addEventListener("submit", event => { event.preventDefault(); rank(); });
 byId("map-overview").addEventListener("click", () => { zoom = false; renderSelected(); fitMap(); });
@@ -317,6 +393,30 @@ const regionOptions = [...new Set(data.earth.rows.map(row => row.region))].sort(
 selectOptions(byId("region"), ["", ...regionOptions], x => x, x => x ? countries[x] || x : "All eligible regions");
 byId("region").addEventListener("change", rank);
 byId("site-pool").addEventListener("change", rank);
+byId("regional-view").addEventListener("change", rank);
+const aiButton = byId("explain-ai");
+const model = globalThis.LanguageModel;
+if (model) model.availability(aiOptions).then(status => { aiButton.hidden = status === "unavailable"; }).catch(() => {});
+aiButton.addEventListener("click", async () => {
+  if (!model || !explanation) return;
+  const facts = JSON.stringify(explanation);
+  const version = explanationVersion;
+  const output = byId("ai-summary");
+  let session;
+  aiButton.disabled = true;
+  output.textContent = "Preparing on-device explanation…";
+  try {
+    session = await model.create(aiOptions);
+    const summary = await session.prompt(
+      "Use only the following project facts. In at most three sentences, explain what the target record describes, why the selected site scored well, and one tradeoff. A reference UTC is not a forecast. Do not invent observations or history. " + facts);
+    if (version === explanationVersion) output.textContent = `On-device AI · ${summary}`;
+  } catch {
+    if (version === explanationVersion) output.textContent = "On-device AI is unavailable. The measured comparison is shown above.";
+  } finally {
+    session?.destroy();
+    aiButton.disabled = false;
+  }
+});
 byId("weight-profile").addEventListener("change", event => {
   const weights = presets[event.target.value];
   if (!weights) return;

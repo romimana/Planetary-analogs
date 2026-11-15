@@ -38,8 +38,12 @@
           <button type="button" data-body="mars" aria-pressed="true">Mars</button>
           <button type="button" data-body="moon" aria-pressed="false">Moon</button>
         </div>
-        <label class="field">Sample <select id="target"></select></label>
+        <label class="field">Mission area <select id="target-area"></select></label>
         <p class="hint target-context" id="target-context"></p>
+        <div id="target-sources" class="candidate-sources"></div>
+        <details class="config"><summary>Choose a specific measurement</summary>
+          <label class="field">Measurement <select id="target"></select></label>
+        </details>
         <h3 class="settings-title">Comparison weights</h3>
         <label class="field">Profile <select id="weight-profile">
           <option value="terrainOnly">Terrain only</option><option value="mixed">Mixed</option><option value="chemistry">Geochemistry-oriented</option>
@@ -50,6 +54,7 @@
           <option value="chemistry">Lab sample locations</option>
         </select></label>
         <label class="field">Earth region <select id="region"></select></label>
+        <label class="checkbox"><input id="regional-view" type="checkbox"> Best match per country or territory</label>
         <div class="weights">
           <label>Chemistry <input name="chemistry" type="number" min="0" max="100" step="1" value="0"></label>
           <label>Terrain <input name="terrain" type="number" min="0" max="100" step="1" value="100"></label>
@@ -62,10 +67,7 @@
           <div id="chem-options" class="checks"></div>
         </details>
         <label class="checkbox solar-toggle"><input id="use-solar" type="checkbox"> Include a sunlight scenario</label>
-        <div id="solar-options" hidden>
-          <label class="field">Planetary scenario (UTC) <select id="target-time"></select></label>
-          <label class="field">Earth scenario (UTC) <select id="earth-time"></select></label>
-        </div>
+        <p class="hint" id="solar-options" hidden>Find the closest daylight pair automatically and show both reference times in UTC.</p>
         <button class="primary" type="submit">Rank Earth analogs <span aria-hidden="true">↗</span></button>
       </form>
       <div class="results-column">
@@ -83,6 +85,10 @@
           <div id="breakdown"></div>
           <div class="table-scroll"><table><thead><tr><th scope="col">Feature</th><th scope="col">Target</th><th scope="col">Earth site</th><th scope="col">Feature distance</th></tr></thead><tbody id="feature-details"></tbody></table></div>
           <div id="candidate-sources" class="candidate-sources"></div>
+          <h4>Why this match?</h4>
+          <p class="hint" id="match-summary"></p>
+          <button type="button" id="explain-ai" hidden>Explain with on-device AI</button>
+          <p class="hint" id="ai-summary" aria-live="polite"></p>
         </section>
       </div>
     </div>

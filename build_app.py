@@ -71,7 +71,8 @@ def read_payload():
                     FROM earth_model_profiles p ORDER BY p.id"""
             else:
                 query = f"""SELECT p.id,p.area,p.latitude,p.longitude_e AS longitude,p.material,
-                    p.geology_unit,p.geology_description,p.geology_product,p.geology_url,p.geology_locator,p.location_role,s.name,{fields}
+                    p.geology_unit,p.geology_description,p.geology_product,p.geology_url,p.geology_locator,p.location_role,
+                    s.name,s.provenance_json,{fields}
                     FROM {body}_model_profiles p JOIN planet_samples s USING(id) ORDER BY p.id"""
             rows = [dict(row) for row in db.execute(query)]
             times = [stamp for stamp, in db.execute("SELECT DISTINCT utc FROM solar_scenarios WHERE body=? ORDER BY 1",
@@ -81,6 +82,10 @@ def read_payload():
                 FROM solar_scenarios WHERE body=? ORDER BY location_id,utc""", (body,)):
                 solar.setdefault(location, {})[stamp] = power
             for row in rows:
+                if body != "earth":
+                    provenance = json.loads(row.pop("provenance_json"))
+                    row["sample"] = {key: provenance.get(key) for key in
+                                     ("sol", "preparation", "chemistry_url", "chemistry_locator", "location_source")}
                 row["values"] = [row.pop(name) for name in FIELDS]
                 row["solar"] = [round(solar[row.get("site_id", row["id"])][stamp], 7) for stamp in times]
             result[body] = {"rows": rows, "times": times}

@@ -50,7 +50,33 @@ REGIONS = [
     ("Harrat Khaybar", "SAU", 25.65, 39.94, None),
     ("Patagonian steppe", "ARG", -46.20, -68.60, None),
     ("Western Australian interior", "AUS", -25.57, 124.53, None),
+    ("Tabernas", "ESP", 37.04, -2.42, None),
+    ("Bardenas Reales", "ESP", 42.17, -1.48, None),
+    ("Los Monegros", "ESP", 41.58, -.11, None),
+    ("Timanfaya", "ESP", 29.02, -13.72, None),
+    ("Sierra Nevada", "ESP", 37.07, -3.31, None),
+    ("Milos", "GRC", 36.70, 24.45, None),
+    ("Nisyros", "GRC", 36.58, 27.17, None),
+    ("Crete highlands", "GRC", 35.20, 24.82, None),
+    ("Olympus", "GRC", 40.09, 22.36, None),
+    ("Arcadia", "GRC", 37.59, 22.21, None),
+    ("Etna", "ITA", 37.75, 15.00, None),
+    ("Gran Sasso", "ITA", 42.44, 13.57, None),
+    ("French Alps", "FRA", 45.08, 6.37, None),
+    ("Swiss Alps", "CHE", 46.48, 8.04, None),
+    ("Austrian Alps", "AUT", 47.11, 12.70, None),
+    ("Sierra da Estrela", "PRT", 40.32, -7.58, None),
+    ("Velebit", "HRV", 44.59, 15.10, None),
+    ("Rila", "BGR", 42.14, 23.58, None),
+    ("Hardangervidda", "NOR", 60.24, 7.63, None),
+    ("Lake Salda uplands", "TUR", 37.53, 29.69, NASA_ANALOGS),
+    ("Todra and High Atlas", "MAR", 31.60, -5.59, None),
+    ("Altiplano", "BOL", -20.15, -67.42, None),
+    ("Baja California", "MEX", 29.30, -114.32, None),
+    ("Bromo–Tengger uplands", "IDN", -7.92, 112.95, None),
+    ("Wadi Rum", "JOR", 29.58, 35.45, None),
 ]
+OPEN_LAND_REGIONS = {area for area, *_ in REGIONS[18:]}
 
 
 def tile_label(lat, lon, step):
@@ -101,8 +127,11 @@ def cover_tiles(task):
             if np.any(np.ma.getmaskarray(classes)):
                 continue
             bare, ice = (float(np.mean(classes.data == value)) for value in (60, 70))
-            if max(bare, ice) >= .60 and not np.any(classes.data == 0):
-                output.append((row, bare, ice, url, hashlib.sha256(classes.data.tobytes()).hexdigest()))
+            open_land = float(np.mean(np.isin(classes.data, (20, 30, 60))))
+            primary = max(bare, ice) >= .60
+            if (primary or row[2] in OPEN_LAND_REGIONS and open_land >= .60) and not np.any(classes.data == 0):
+                output.append((row, bare, ice, url, hashlib.sha256(classes.data.tobytes()).hexdigest(),
+                               open_land, "bare-or-ice" if primary else "open-vegetation"))
     return output
 
 
@@ -113,7 +142,7 @@ def elevation_tiles(task):
         if raster.crs.to_epsg() != 4326 or raster.transform.b or raster.transform.d:
             raise ValueError("Unexpected Copernicus grid")
         t = raster.transform
-        for row, bare, ice, cover_url, cover_hash in samples:
+        for row, bare, ice, cover_url, cover_hash, open_land, cover_filter in samples:
             lat, lon, area, region, reference = row
             w, s, e, n = envelope(lat, lon)
             bounds = from_bounds(w, s, e, n, t)
@@ -140,6 +169,7 @@ def elevation_tiles(task):
                 "terrain_window_sha256": hashlib.sha256(pixels.data.astype("<f4").tobytes()+valid.tobytes()).hexdigest(),
                 "cover_url": cover_url, "cover_sample_sha256": cover_hash,
                 "bare_fraction": bare, "ice_fraction": ice,
+                "open_land_fraction": open_land, "cover_filter": cover_filter,
                 **{key: metrics[key] for key in TERRAIN}, NEW: gentle_patch(grid),
             })
     return output

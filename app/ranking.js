@@ -27,6 +27,28 @@ function logRatios(values) {
   return logs.map(value => value - average);
 }
 
+function daylightScenarios(values, limit = 4) {
+  const daylight = values.map((value, index) => ({value, index}))
+    .filter(({value}) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a.value - b.value || a.index - b.index)
+    .filter(({value}, i, sorted) => i === 0 || value !== sorted[i - 1].value);
+  if (daylight.length <= limit) return daylight;
+  return Array.from({length: limit}, (_, i) => daylight[Math.round(i * (daylight.length - 1) / (limit - 1))]);
+}
+
+function solarMatch(targetWindows, earthValues) {
+  let best = null;
+  for (const {value, index} of targetWindows) {
+    for (let i = 0; i < earthValues.length; i++) {
+      const earthSun = earthValues[i];
+      if (!Number.isFinite(earthSun) || earthSun <= 0) continue;
+      const distance = Math.abs(value - earthSun);
+      if (!best || distance < best.distance) best = {distance, targetTime: index, earthTime: i};
+    }
+  }
+  return best;
+}
+
 function rankAnalogs(data, body, target, settings) {
   const weights = {...settings.weights};
   const geoColumn = geologyColumn(body, target.geology_unit);
@@ -54,10 +76,15 @@ function rankAnalogs(data, body, target, settings) {
     return {row, chem: vector(row, chemIndices, true), terrain: vector(row, terrainIndices, false),
             geology: data.rubric[row.geology_unit]?.[geoColumn]};
   });
-  const targetSun = target.solar[settings.targetTime];
-  const candidates = numericCandidates.filter(({row, chem, terrain, geology}) =>
-    chem && terrain && (!weights.geology || Number.isFinite(geology)) &&
-    (!weights.solar || (Number.isFinite(row.solar[settings.earthTime]) && Number.isFinite(targetSun))));
+  const targetWindows = weights.solar ? daylightScenarios(target.solar) : [];
+  if (weights.solar && !targetWindows.length) {
+    return {ranked: [], weights, geoColumn, error: "No sunlit reference time exists for this target."};
+  }
+  if (weights.solar) for (const candidate of numericCandidates) {
+    candidate.sun = solarMatch(targetWindows, candidate.row.solar);
+  }
+  const candidates = numericCandidates.filter(({chem, terrain, geology, sun}) =>
+    chem && terrain && (!weights.geology || Number.isFinite(geology)) && (!weights.solar || sun));
   if (!candidates.length) return {ranked: [], weights, geoColumn, error: "No Earth candidates meet the selected requirements."};
 
   const scale = indices.map((_, i) => {
@@ -73,7 +100,7 @@ function rankAnalogs(data, body, target, settings) {
       .map((value, i) => Math.abs(value - targetVector[i]) / scale[i]);
     const rms = values => values.length ? Math.sqrt(values.reduce((sum, v) => sum + v * v, 0) / values.length) : 0;
     const bounded = value => value / (1 + value);
-    const solar = weights.solar ? Math.abs(candidate.row.solar[settings.earthTime] - targetSun) : null;
+    const solar = weights.solar ? candidate.sun.distance : null;
     const distances = {
       chemistry: weights.chemistry ? bounded(rms(standardized.slice(0, chemIndices.length))) : null,
       terrain: weights.terrain ? bounded(rms(standardized.slice(chemIndices.length))) : null,
@@ -99,4 +126,4 @@ function rankAnalogs(data, body, target, settings) {
             "Terrain survey windows have no lab assays. Use Terrain only or choose lab sample locations." : null};
 }
 
-if (typeof module !== "undefined") module.exports = {rankAnalogs, geologyColumn};
+if (typeof module !== "undefined") module.exports = {rankAnalogs, geologyColumn, daylightScenarios, solarMatch};
