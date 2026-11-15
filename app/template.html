@@ -42,14 +42,18 @@
         <p class="hint target-context" id="target-context"></p>
         <h3 class="settings-title">Comparison weights</h3>
         <label class="field">Profile <select id="weight-profile">
-          <option value="mixed">Mixed</option><option value="chemistry">Geochemistry-oriented</option>
+          <option value="terrainOnly">Terrain only</option><option value="mixed">Mixed</option><option value="chemistry">Geochemistry-oriented</option>
           <option value="terrain">Terrain-oriented</option><option value="custom">Custom</option>
+        </select></label>
+        <label class="field">Earth sites <select id="site-pool">
+          <option value="">All eligible sites</option><option value="terrain">Terrain survey windows</option>
+          <option value="chemistry">Lab sample locations</option>
         </select></label>
         <label class="field">Earth region <select id="region"></select></label>
         <div class="weights">
-          <label>Chemistry <input name="chemistry" type="number" min="0" max="100" step="1" value="35"></label>
-          <label>Terrain <input name="terrain" type="number" min="0" max="100" step="1" value="40"></label>
-          <label>Mapped geology <input name="geology" type="number" min="0" max="100" step="1" value="25"></label>
+          <label>Chemistry <input name="chemistry" type="number" min="0" max="100" step="1" value="0"></label>
+          <label>Terrain <input name="terrain" type="number" min="0" max="100" step="1" value="100"></label>
+          <label>Mapped geology <input name="geology" type="number" min="0" max="100" step="1" value="0"></label>
           <label>Sunlight <input name="solar" type="number" min="0" max="100" step="1" value="10" disabled></label>
         </div>
         <p class="hint" id="geology-note"></p>

@@ -39,31 +39,38 @@ function rankAnalogs(data, body, target, settings) {
   if (weights.chemistry && chemIndices.length < 2) {
     return {ranked: [], weights, geoColumn, error: "Select at least two chemistry components to compare their ratios."};
   }
-  const indices = [...chemIndices, ...(weights.terrain ? [6, 7, 8, 9, 10, 11] : [])];
-  const vector = row => {
-    const raw = indices.map(index => row.values[index]);
-    if (raw.some((v, i) => !Number.isFinite(v) || (i < chemIndices.length && v <= 0))) return null;
-    return [...logRatios(raw.slice(0, chemIndices.length)), ...raw.slice(chemIndices.length)];
+  const terrainIndices = weights.terrain ? [6, 7, 8, 9, 10, 11] : [];
+  const indices = [...chemIndices, ...terrainIndices];
+  const vector = (row, subset, compositional) => {
+    const raw = subset.map(index => row.values[index]);
+    if (raw.some(v => !Number.isFinite(v) || (compositional && v <= 0))) return null;
+    return compositional ? logRatios(raw) : raw;
   };
-  const targetVector = vector(target);
-  if (!targetVector) return {ranked: [], weights, geoColumn, error: "The target lacks a selected feature."};
-  const numericCandidates = data.earth.rows.flatMap(row => {
-    const values = vector(row);
-    return values ? [{row, values, geology: data.rubric[row.geology_unit]?.[geoColumn]}] : [];
+  const targetChem = vector(target, chemIndices, true);
+  const targetTerrain = vector(target, terrainIndices, false);
+  if (!targetChem || !targetTerrain) return {ranked: [], weights, geoColumn, error: "The target lacks a selected feature."};
+  const targetVector = [...targetChem, ...targetTerrain];
+  const numericCandidates = data.earth.rows.map(row => {
+    return {row, chem: vector(row, chemIndices, true), terrain: vector(row, terrainIndices, false),
+            geology: data.rubric[row.geology_unit]?.[geoColumn]};
   });
   const targetSun = target.solar[settings.targetTime];
-  const candidates = numericCandidates.filter(({row, geology}) =>
-    (!weights.geology || Number.isFinite(geology)) &&
+  const candidates = numericCandidates.filter(({row, chem, terrain, geology}) =>
+    chem && terrain && (!weights.geology || Number.isFinite(geology)) &&
     (!weights.solar || (Number.isFinite(row.solar[settings.earthTime]) && Number.isFinite(targetSun))));
   if (!candidates.length) return {ranked: [], weights, geoColumn, error: "No Earth candidates meet the selected requirements."};
 
   const scale = indices.map((_, i) => {
-    const sorted = numericCandidates.map(c => c.values[i]).sort((a, b) => a - b);
+    const sorted = numericCandidates.flatMap(c => {
+      const v = i < chemIndices.length ? c.chem?.[i] : c.terrain?.[i - chemIndices.length];
+      return Number.isFinite(v) ? [v] : [];
+    }).sort((a, b) => a - b);
     const iqr = percentile(sorted, 0.75) - percentile(sorted, 0.25);
     return iqr > 1e-12 ? iqr : 1;
   });
   const ranked = candidates.map(candidate => {
-    const standardized = candidate.values.map((value, i) => Math.abs(value - targetVector[i]) / scale[i]);
+    const standardized = [...candidate.chem, ...candidate.terrain]
+      .map((value, i) => Math.abs(value - targetVector[i]) / scale[i]);
     const rms = values => values.length ? Math.sqrt(values.reduce((sum, v) => sum + v * v, 0) / values.length) : 0;
     const bounded = value => value / (1 + value);
     const solar = weights.solar ? Math.abs(candidate.row.solar[settings.earthTime] - targetSun) : null;
@@ -80,13 +87,16 @@ function rankAnalogs(data, body, target, settings) {
   const eligibleByRegion = {};
   const sites = new Set();
   const rankedSites = ranked.filter(({row}) => {
+    if (settings.pool && Boolean(row.terrain_url) !== (settings.pool === "terrain")) return false;
     if (sites.has(row.site_id)) return false;
     sites.add(row.site_id);
     eligibleByRegion[row.region] = (eligibleByRegion[row.region] || 0) + 1;
     return true;
   });
   return {ranked: settings.region ? rankedSites.filter(item => item.row.region === settings.region) : rankedSites,
-          weights, geoColumn, eligibleByRegion};
+          weights, geoColumn, eligibleByRegion,
+          error: !rankedSites.length && settings.pool === "terrain" && weights.chemistry ?
+            "Terrain survey windows have no lab assays. Use Terrain only or choose lab sample locations." : null};
 }
 
 if (typeof module !== "undefined") module.exports = {rankAnalogs, geologyColumn};

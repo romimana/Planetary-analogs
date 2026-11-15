@@ -5,7 +5,10 @@ const form = byId("controls");
 const targetSelect = byId("target");
 const solarToggle = byId("use-solar");
 const groupLabels = {chemistry: "Chemistry", terrain: "Terrain", geology: "Mapped geology", solar: "Sunlight"};
-const countries = {AUS: "Australia", JPN: "Japan", USA: "United States", IRL: "Ireland"};
+const countries = {
+  ...Object.fromEntries(data.earth.rows.filter(row => row.region_name).map(row => [row.region, row.region_name])),
+  AUS: "Australia", JPN: "Japan", USA: "United States", IRL: "Ireland"
+};
 const featureDefinitions = [...chemistry, ...terrain];
 const formatScore = value => value.toFixed(3);
 const coordinates = row => `${row.latitude.toFixed(4)}°, ${row.longitude.toFixed(4)}°`;
@@ -25,7 +28,8 @@ const detailTiles = /^https?:/.test(location.protocol) ? L.tileLayer("https://ti
   pane: "detailTiles", maxNativeZoom: 19, maxZoom: 19,
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }) : null;
-const presets = {mixed: [35, 40, 25, 10], chemistry: [55, 20, 25, 10], terrain: [20, 55, 25, 10]};
+const presets = {terrainOnly: [0, 100, 0, 10], mixed: [35, 40, 25, 10],
+  chemistry: [55, 20, 25, 10], terrain: [20, 55, 25, 10]};
 let activeSettings;
 let activeTarget;
 let activeBody;
@@ -79,6 +83,7 @@ function readSettings() {
   return {
     weights: Object.fromEntries(groups.map(key => [key, Number(form.elements[key].value) || 0])),
     useSolar: solarToggle.checked,
+    pool: byId("site-pool").value,
     region: byId("region").value,
     targetTime: Number(byId("target-time").value),
     earthTime: Number(byId("earth-time").value),
@@ -111,7 +116,7 @@ function renderResults() {
     const {row, score} = resultRow;
     const line = el("tr", undefined, "result-row");
     line.classList.toggle("is-active", index === selected);
-    const button = el("button", row.id, "site-button");
+    const button = el("button", row.area === "Global grid" ? row.id : row.area || row.id, "site-button");
     button.type = "button";
     button.setAttribute("aria-pressed", index === selected);
     button.addEventListener("click", () => selectCandidate(index));
@@ -210,9 +215,14 @@ function renderSelected() {
         time(earthSun, data.earth.times[activeSettings.earthTime]), formatScore(distances.solar)));
     }
     byId("feature-details").replaceChildren(...lines);
-    const sources = [row.chemistry_source_url ?
+    const sources = row.terrain_url ? [
+      sourceLink("Copernicus elevation tile", row.terrain_url),
+      sourceLink("ESA WorldCover tile", row.cover_url),
+      el("span", `Land cover sample · ${Math.round(row.bare_fraction*100)}% bare/sparse · ${Math.round(row.ice_fraction*100)}% snow/ice`)
+    ] : [row.chemistry_source_url ?
       sourceLink(`Chemistry source · ${row.source_id}`, row.chemistry_source_url) :
       el("span", `Chemistry source · ${row.source_id}`)];
+    if (row.reference_url) sources.push(sourceLink("NASA regional analog reference", row.reference_url));
     if (row.geology_url) sources.push(sourceLink("Earth geology source", row.geology_url));
     if (activeTarget.geology_url) sources.push(sourceLink("Target geology source", activeTarget.geology_url));
     if (bedrock) sources.push(sourceLink(`Irish bedrock · polygon record ${bedrock[0]}`, data.irishBedrock.url));
@@ -306,11 +316,13 @@ const regionOptions = [...new Set(data.earth.rows.map(row => row.region))].sort(
   (countries[a] || a).localeCompare(countries[b] || b));
 selectOptions(byId("region"), ["", ...regionOptions], x => x, x => x ? countries[x] || x : "All eligible regions");
 byId("region").addEventListener("change", rank);
+byId("site-pool").addEventListener("change", rank);
 byId("weight-profile").addEventListener("change", event => {
   const weights = presets[event.target.value];
   if (!weights) return;
   groups.forEach((key, i) => {
-    form.elements[key].value = weights[i] - (solarToggle.checked && i < 2 ? 5 : 0);
+    const sunlightShare = event.target.value === "terrainOnly" ? 10 * i : 5;
+    form.elements[key].value = weights[i] - (solarToggle.checked && i < 2 ? sunlightShare : 0);
   });
   rank();
 });

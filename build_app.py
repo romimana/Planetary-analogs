@@ -41,6 +41,22 @@ def add_expansion(result):
             result["earth"]["rows"].append(row)
     return sha
 
+
+def terrain_sites(times):
+    path = ROOT / "data/earth-terrain-sites.json"
+    source = json.loads(path.read_text(encoding="utf-8"))
+    if len(source["rows"]) != source["report"]["terrain_passed"]:
+        raise ValueError("Terrain site count differs from its manifest")
+    for row in source["rows"]:
+        geology = row.pop("geology")
+        row.update(zip(("geology_unit", "geology_description", "geology_product", "geology_url",
+                        "geology_sha256", "geology_locator"), geology or [None]*6, strict=True))
+        row.update(id=row["site_id"], source_id="Copernicus GLO-30 / ESA WorldCover",
+                   material="Terrain window · chemistry unavailable")
+        row["values"] = [row.pop(name, None) for name in FIELDS]
+        row["solar"] = [row["solar"][stamp] for stamp in times]
+    return source["rows"]
+
 def read_payload():
     path = ROOT / "data/ml-enriched.sqlite"
     actual = verified_snapshot(path)
@@ -73,6 +89,7 @@ def read_payload():
             for site, scene, url in db.execute("SELECT site_id,scene,source_url FROM earth_radar ORDER BY scene")
         }
     expansion_sha = add_expansion(result)
+    result["earth"]["rows"].extend(terrain_sites(result["earth"]["times"]))
     irish_bedrock = json.loads((ROOT / "data/irish-bedrock.json").read_text(encoding="utf-8"))
     if irish_bedrock["earthExpansionSha256"] != expansion_sha:
         raise ValueError("Irish bedrock GIS join refers to a different Earth expansion snapshot")

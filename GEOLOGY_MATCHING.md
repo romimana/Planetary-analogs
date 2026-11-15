@@ -44,6 +44,8 @@ Geology-scored runs use known Earth map codes on all included candidates. For a 
 
 ## Sensitivity check
 
+This check predates the chemistry-independent terrain survey. See [the current ranking and data](TERRAIN_SURVEY.md).
+
 The following runs keep the chemistry-to-terrain weight ratio at 35:40 and vary only the geology share. With no solar weighting, the entered geology weights 0, 10, 25, and 40 normalize to 0%, 11.8%, 25%, and 34.8%. All runs with a nonzero geology weight had 15,775 eligible sites without silica and 8,464 with it. The numeric feature distances for common candidates stayed fixed across geology settings.
 
 | Target and silica selection | 0% geology | 11.8% geology | 25% geology | 34.8% geology |
