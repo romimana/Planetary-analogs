@@ -4,6 +4,10 @@ NASA Space Apps 2026 · [Identify Earth Locations that Analog the Permanent Moon
 
 Start with the [ML dataset and codebook](ML.md). The snapshot includes Earth candidates and Mars and Moon targets, with SQLite views for chemistry, terrain, and environmental comparisons. The source builds below reconstruct the broader inventories.
 
+## Interactive analog explorer
+
+Download [app/index.html](app/index.html) from GitHub and open it in a browser. The file bundles the public comparison data, ranking engine, and overview map. An internet connection is needed to open Google Earth and linked sources. See [the demo guide](app/README.md).
+
 Open [the data exploration notebook in Colab](https://colab.research.google.com/github/romimana/Planetary-analogs/blob/main/explore_data.ipynb) to inspect the SQLite tables with pandas, review missing values, and select comparable features. It loads the latest published snapshot by default. Set `DATA_REF` to a commit SHA for reproducibility.
 
 ## Reproduce Mars
