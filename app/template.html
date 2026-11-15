@@ -69,6 +69,20 @@
         <button class="primary" type="submit">Rank Earth analogs <span aria-hidden="true">↗</span></button>
       </form>
       <div class="results-column">
+        <section class="panel explanation" aria-labelledby="detail-title" id="candidate-detail">
+          <div class="panel-heading"><div><h3 id="detail-title">Why this match?</h3><p class="hint" id="detail-subtitle"></p></div></div>
+          <div class="explanation-body">
+            <p id="match-summary"></p>
+            <button class="primary explain-button" type="button" id="explain-ai" hidden>Explain with Gemini <span aria-hidden="true">✦</span></button>
+            <p id="ai-summary" aria-live="polite" hidden></p>
+          </div>
+          <details class="match-data">
+            <summary>View measurements, distances and sources</summary>
+            <div id="breakdown"></div>
+            <div class="table-scroll"><table><thead><tr><th scope="col">Feature</th><th scope="col">Target</th><th scope="col">Earth site</th><th scope="col">Feature distance</th></tr></thead><tbody id="feature-details"></tbody></table></div>
+            <div id="candidate-sources" class="candidate-sources"></div>
+          </details>
+        </section>
         <section class="panel results" aria-labelledby="results-title">
           <div class="panel-heading"><div><h3 id="results-title">Closest analogs</h3><p id="results-status" class="hint" aria-live="polite">Preparing the dataset…</p><p id="regional-coverage" class="hint"></p></div><span class="small-label">LOWER DISTANCE IS BETTER</span></div>
           <div class="table-scroll"><table><thead><tr><th scope="col">Rank</th><th scope="col">Earth site</th><th scope="col">Location</th><th scope="col">Distance</th></tr></thead><tbody id="results"></tbody></table></div>
@@ -77,16 +91,6 @@
           <div class="panel-heading"><div><h3 id="map-title">Candidate locations</h3><p class="hint" id="map-status">Select a site to inspect it.</p></div><div class="map-tools"><button id="map-overview" type="button" aria-pressed="true">Overview</button><button id="map-focus" type="button" aria-pressed="false">Focus</button></div></div>
           <div class="map" id="map" aria-label="Interactive map of candidate locations"></div>
           <div class="map-footer"><span id="coordinates"></span><div class="map-links"><button type="button" id="download-kml" hidden>Download KML</button><a id="osm-link" target="_blank" rel="noopener" hidden>Street map ↗</a><a id="earth-link" target="_blank" rel="noopener" hidden>Open in Google Earth ↗</a></div></div>
-        </section>
-        <section class="panel detail" aria-labelledby="detail-title" id="candidate-detail">
-          <div class="panel-heading"><div><h3 id="detail-title">Distance breakdown</h3><p class="hint" id="detail-subtitle"></p></div></div>
-          <div id="breakdown"></div>
-          <div class="table-scroll"><table><thead><tr><th scope="col">Feature</th><th scope="col">Target</th><th scope="col">Earth site</th><th scope="col">Feature distance</th></tr></thead><tbody id="feature-details"></tbody></table></div>
-          <div id="candidate-sources" class="candidate-sources"></div>
-          <h4>Why this match?</h4>
-          <p class="hint" id="match-summary"></p>
-          <button type="button" id="explain-ai" hidden>Explain with Gemini</button>
-          <p class="hint" id="ai-summary" aria-live="polite"></p>
         </section>
       </div>
     </div>

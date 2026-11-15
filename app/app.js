@@ -64,7 +64,7 @@ function updateSettings() {
   const note = byId("target-recommendation");
   note.hidden = !recommendation;
   note.textContent = recommendation ?
-    `Demo recommendation · Top 10 includes ${recommendation.union} regions across four profiles, with ${recommendation.firstRegions} different first-place regions.` : "";
+    `Demo recommendation · Top 10 spans ${recommendation.union} regions across four profiles. Turn on “Best match per country or territory” for a broader shortlist.` : "";
   const sources = [];
   if (target.sample.chemistry_url) sources.push(sourceLink("Measurement source", target.sample.chemistry_url));
   if (target.sample.location_source) sources.push(sourceLink("Location source", target.sample.location_source));
@@ -245,6 +245,7 @@ function renderSelected() {
   explanationVersion++;
   explanation = null;
   byId("ai-summary").textContent = "";
+  byId("ai-summary").hidden = true;
   byId("candidate-detail").hidden = !match;
   byId("map-focus").disabled = !match;
   byId("map-overview").setAttribute("aria-pressed", !zoom);
@@ -259,7 +260,8 @@ function renderSelected() {
     byId("coordinates").textContent = `${countries[row.region] || row.region} · ${coordinates(row)}`;
     byId("osm-link").href = `https://www.openstreetmap.org/?mlat=${row.latitude}&mlon=${row.longitude}#map=15/${row.latitude}/${row.longitude}`;
     byId("earth-link").href = `https://earth.google.com/web/search/${encodeURIComponent(`${row.latitude},${row.longitude}`)}`;
-    byId("detail-subtitle").textContent = `${row.id} · ${row.material}`;
+    const place = row.area && row.area !== "Global grid" ? row.area : row.id;
+    byId("detail-subtitle").textContent = `${place} · ${countries[row.region] || row.region}`;
     byId("breakdown").className = "breakdown";
     byId("breakdown").replaceChildren(...groupCards(match));
     const lines = match.featureDistances.map(([index, distance]) => detailLine(
@@ -397,6 +399,7 @@ aiButton.addEventListener("click", async () => {
   const facts = JSON.stringify(explanation);
   const version = explanationVersion;
   const output = byId("ai-summary");
+  output.hidden = false;
   aiButton.disabled = true;
   output.textContent = "Preparing Gemini explanation…";
   try {

@@ -14,29 +14,29 @@ function evaluate(body, target) {
       weights: {chemistry, terrain, geology, solar: 0}, chemIndices: [1,2,3,4], useSolar: false
     });
     const top = result.ranked.slice(0, 10);
-    return {name, regions: [...new Set(top.map(({row}) => row.region))], first: top[0]?.row.id,
+    const counts = {};
+    for (const {row} of top) counts[row.region] = (counts[row.region] || 0) + 1;
+    const effectiveRegions = top.length === 10 ? 100 / Object.values(counts).reduce((sum, count) => sum + count ** 2, 0) : 0;
+    return {name, regions: Object.keys(counts), counts, effectiveRegions, first: top[0]?.row.id,
       firstRegion: top[0]?.row.region};
   });
   const coverage = Math.min(...runs.map(run => run.regions.length));
   const union = new Set(runs.flatMap(run => run.regions)).size;
   const firstRegions = new Set(runs.map(run => run.firstRegion).filter(Boolean)).size;
   const firstSites = new Set(runs.map(run => run.first).filter(Boolean)).size;
-  return {id: target.id, area: target.area, name: target.name, coverage, union, firstRegions, firstSites, runs};
+  const weakest = Math.min(...runs.map(run => run.effectiveRegions));
+  return {id: target.id, area: target.area, name: target.name, coverage, union, firstRegions, firstSites, weakest, runs};
 }
 
 const reports = {};
 for (const body of ["mars","moon"]) {
-  const candidates = data[body].rows.filter(target => target.comparison_status !== "chemistry_hold")
+  const candidates = data[body].rows.filter(target =>
+    target.comparison_status !== "chemistry_hold" && !/\bFAILED\b/i.test(target.name.replaceAll("_", " ")))
     .map(target => evaluate(body, target))
     .filter(row => row.coverage >= 2 && row.firstRegions >= 2)
-    .sort((a,b) => b.coverage-a.coverage || b.firstRegions-a.firstRegions ||
+    .sort((a,b) => b.weakest-a.weakest || b.coverage-a.coverage || b.firstRegions-a.firstRegions ||
       b.union-a.union || b.firstSites-a.firstSites || a.id.localeCompare(b.id));
-  const seen = new Set();
-  reports[body] = candidates.filter(row => {
-    if (seen.has(row.area)) return false;
-    seen.add(row.area);
-    return true;
-  }).slice(0,3);
+  reports[body] = candidates.slice(0,3);
   console.log(body, reports[body].map(({name, area, coverage, union, firstRegions}) =>
     ({name, area, coverage, union, firstRegions})));
 }
