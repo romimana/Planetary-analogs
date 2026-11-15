@@ -13,7 +13,7 @@ const featureDefinitions = [...chemistry, ...terrain];
 const formatScore = value => value.toFixed(3);
 const coordinates = row => `${row.latitude.toFixed(4)}°, ${row.longitude.toFixed(4)}°`;
 const displayTime = stamp => stamp.replace("T", " ").replace(":00Z", "Z");
-let body = "mars";
+let body = "moon";
 let result = {ranked: []};
 let shortlist = [];
 let selected = 0;
@@ -405,9 +405,14 @@ aiButton.addEventListener("click", async () => {
   try {
     const response = await fetch("/api/explain", {method: "POST", headers: {"Content-Type": "application/json"},
       body: facts, signal: AbortSignal.timeout(25000)});
-    if (!response.ok) throw new Error("Explanation service unavailable");
     const {text} = await response.json();
-    if (version === explanationVersion) output.textContent = `Gemini · ${text}`;
+    if (version !== explanationVersion) return;
+    if (response.status === 429) {
+      output.textContent = "Gemini has reached its request limit. The match summary is still available above.";
+      return;
+    }
+    if (!response.ok || typeof text !== "string" || !text.trim()) throw new Error("No explanation returned");
+    output.textContent = `Gemini · ${text}`;
   } catch {
     if (version === explanationVersion) output.textContent = "Gemini is unavailable. The measured comparison is shown above.";
   } finally {

@@ -812,8 +812,8 @@ td:last-child,th:last-child{text-align:right;padding-right:20px}
       <form class="panel controls" id="controls">
         <h3>Mission target</h3>
         <div class="segmented" role="group" aria-label="Planetary body">
-          <button type="button" data-body="mars" aria-pressed="true">Mars</button>
-          <button type="button" data-body="moon" aria-pressed="false">Moon</button>
+          <button type="button" data-body="mars" aria-pressed="false">Mars</button>
+          <button type="button" data-body="moon" aria-pressed="true">Moon</button>
         </div>
         <label class="field">Measurement <select id="target"></select></label>
         <p class="hint target-context" id="target-context"></p>
@@ -846,6 +846,10 @@ td:last-child,th:last-child{text-align:right;padding-right:20px}
         <button class="primary" type="submit">Rank Earth analogs <span aria-hidden="true">↗</span></button>
       </form>
       <div class="results-column">
+        <section class="panel results" aria-labelledby="results-title">
+          <div class="panel-heading"><div><h3 id="results-title">Closest analogs</h3><p id="results-status" class="hint" aria-live="polite">Preparing the dataset…</p><p id="regional-coverage" class="hint"></p></div><span class="small-label">LOWER DISTANCE IS BETTER</span></div>
+          <div class="table-scroll"><table><thead><tr><th scope="col">Rank</th><th scope="col">Earth site</th><th scope="col">Location</th><th scope="col">Distance</th></tr></thead><tbody id="results"></tbody></table></div>
+        </section>
         <section class="panel explanation" aria-labelledby="detail-title" id="candidate-detail">
           <div class="panel-heading"><div><h3 id="detail-title">Why this match?</h3><p class="hint" id="detail-subtitle"></p></div></div>
           <div class="explanation-body">
@@ -859,10 +863,6 @@ td:last-child,th:last-child{text-align:right;padding-right:20px}
             <div class="table-scroll"><table><thead><tr><th scope="col">Feature</th><th scope="col">Target</th><th scope="col">Earth site</th><th scope="col">Feature distance</th></tr></thead><tbody id="feature-details"></tbody></table></div>
             <div id="candidate-sources" class="candidate-sources"></div>
           </details>
-        </section>
-        <section class="panel results" aria-labelledby="results-title">
-          <div class="panel-heading"><div><h3 id="results-title">Closest analogs</h3><p id="results-status" class="hint" aria-live="polite">Preparing the dataset…</p><p id="regional-coverage" class="hint"></p></div><span class="small-label">LOWER DISTANCE IS BETTER</span></div>
-          <div class="table-scroll"><table><thead><tr><th scope="col">Rank</th><th scope="col">Earth site</th><th scope="col">Location</th><th scope="col">Distance</th></tr></thead><tbody id="results"></tbody></table></div>
         </section>
         <section class="panel map-panel" aria-labelledby="map-title">
           <div class="panel-heading"><div><h3 id="map-title">Candidate locations</h3><p class="hint" id="map-status">Select a site to inspect it.</p></div><div class="map-tools"><button id="map-overview" type="button" aria-pressed="true">Overview</button><button id="map-focus" type="button" aria-pressed="false">Focus</button></div></div>
@@ -1038,7 +1038,7 @@ const featureDefinitions = [...chemistry, ...terrain];
 const formatScore = value => value.toFixed(3);
 const coordinates = row => `${row.latitude.toFixed(4)}°, ${row.longitude.toFixed(4)}°`;
 const displayTime = stamp => stamp.replace("T", " ").replace(":00Z", "Z");
-let body = "mars";
+let body = "moon";
 let result = {ranked: []};
 let shortlist = [];
 let selected = 0;
@@ -1430,9 +1430,14 @@ aiButton.addEventListener("click", async () => {
   try {
     const response = await fetch("/api/explain", {method: "POST", headers: {"Content-Type": "application/json"},
       body: facts, signal: AbortSignal.timeout(25000)});
-    if (!response.ok) throw new Error("Explanation service unavailable");
     const {text} = await response.json();
-    if (version === explanationVersion) output.textContent = `Gemini · ${text}`;
+    if (version !== explanationVersion) return;
+    if (response.status === 429) {
+      output.textContent = "Gemini has reached its request limit. The match summary is still available above.";
+      return;
+    }
+    if (!response.ok || typeof text !== "string" || !text.trim()) throw new Error("No explanation returned");
+    output.textContent = `Gemini · ${text}`;
   } catch {
     if (version === explanationVersion) output.textContent = "Gemini is unavailable. The measured comparison is shown above.";
   } finally {

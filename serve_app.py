@@ -26,8 +26,10 @@ def generate(facts, key, model):
     payload = {
         "systemInstruction": {"parts": [{"text": PROMPT}]},
         "contents": [{"parts": [{"text": json.dumps(facts, ensure_ascii=False)}]}],
-        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.2},
+        "generationConfig": {"maxOutputTokens": 640, "temperature": 0.2},
     }
+    if model == "gemini-3.1-flash-lite":
+        payload["generationConfig"]["thinkingConfig"] = {"thinkingLevel": "minimal"}
     request = Request(URL + model + ":generateContent", data=json.dumps(payload).encode(),
                       headers={"Content-Type": "application/json", "x-goog-api-key": key})
     with urlopen(request, timeout=18) as reply:
