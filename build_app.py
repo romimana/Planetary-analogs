@@ -23,8 +23,7 @@ def verified_snapshot(path):
         raise ValueError(f"{path.name} does not match its published checksum")
     return actual
 
-def add_expansion(result):
-    path = ROOT / "data/earth-expansion.sqlite"
+def add_expansion(result, path):
     sha = verified_snapshot(path)
     with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
         db.row_factory = sqlite3.Row
@@ -71,9 +70,9 @@ def read_payload():
                     FROM earth_model_profiles p ORDER BY p.id"""
             else:
                 query = f"""SELECT p.id,p.area,p.latitude,p.longitude_e AS longitude,p.material,
-                    p.geology_unit,p.geology_description,p.geology_product,p.geology_url,p.geology_locator,p.location_role,
-                    s.name,s.provenance_json,{fields}
-                    FROM {body}_model_profiles p JOIN planet_samples s USING(id) ORDER BY p.id"""
+                    g.geology_unit,g.geology_description,g.geology_product,g.geology_url,g.geology_locator,p.location_role,
+                    p.name,p.provenance_json,p.comparison_status,{fields}
+                    FROM planet_samples p LEFT JOIN {body}_geology g USING(id) WHERE p.body='{body}' ORDER BY p.id"""
             rows = [dict(row) for row in db.execute(query)]
             times = [stamp for stamp, in db.execute("SELECT DISTINCT utc FROM solar_scenarios WHERE body=? ORDER BY 1",
                                                     (body,))]
@@ -87,13 +86,15 @@ def read_payload():
                     row["sample"] = {key: provenance.get(key) for key in
                                      ("sol", "preparation", "chemistry_url", "chemistry_locator", "location_source")}
                 row["values"] = [row.pop(name) for name in FIELDS]
-                row["solar"] = [round(solar[row.get("site_id", row["id"])][stamp], 7) for stamp in times]
+                site = row.get("site_id", row["id"])
+                row["solar"] = [round(solar[site][stamp], 7) for stamp in times] if site in solar else []
             result[body] = {"rows": rows, "times": times}
         result["radar"] = {
             site: {"scene": scene, "source": url}
             for site, scene, url in db.execute("SELECT site_id,scene,source_url FROM earth_radar ORDER BY scene")
         }
-    expansion_sha = add_expansion(result)
+    expansion_sha = add_expansion(result, ROOT / "data/earth-expansion.sqlite")
+    gemas_sha = add_expansion(result, ROOT / "data/gemas-public.sqlite")
     result["earth"]["rows"].extend(terrain_sites(result["earth"]["times"]))
     irish_bedrock = json.loads((ROOT / "data/irish-bedrock.json").read_text(encoding="utf-8"))
     if irish_bedrock["earthExpansionSha256"] != expansion_sha:
@@ -106,8 +107,10 @@ def read_payload():
                 rubric[code] = [float(moon), float(mars)]
     if len(rubric) != 13:
         raise ValueError("Expected 13 documented map-unit penalties")
+    report = ROOT / "data/recommended-samples.json"
+    recommended = json.loads(report.read_text(encoding="utf-8")) if report.exists() else {}
     return {**result, "rubric": rubric, "sha256": actual, "expansionSha256": expansion_sha,
-            "irishBedrock": irish_bedrock}
+            "gemasSha256": gemas_sha, "irishBedrock": irish_bedrock, "recommended": recommended}
 
 def main():
     source = (APP / "template.html").read_text(encoding="utf-8")

@@ -1,0 +1,21 @@
+{
+  "columns": [
+    "survey",
+    "samples",
+    "sites",
+    "silica",
+    "geology",
+    "silica_and_geology"
+  ],
+  "coverage": [
+    [
+      "GSI-GEMAS",
+      3503,
+      3409,
+      3503,
+      3294,
+      3294
+    ]
+  ],
+  "sha256": "f31d5d5ac32ccf0089a26202d3ae1f091f7d28125ff199b5bc98df002a8b24f6"
+}

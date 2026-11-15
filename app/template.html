@@ -38,12 +38,10 @@
           <button type="button" data-body="mars" aria-pressed="true">Mars</button>
           <button type="button" data-body="moon" aria-pressed="false">Moon</button>
         </div>
-        <label class="field">Mission area <select id="target-area"></select></label>
+        <label class="field">Measurement <select id="target"></select></label>
         <p class="hint target-context" id="target-context"></p>
+        <p class="hint" id="target-recommendation" hidden></p>
         <div id="target-sources" class="candidate-sources"></div>
-        <details class="config"><summary>Choose a specific measurement</summary>
-          <label class="field">Measurement <select id="target"></select></label>
-        </details>
         <h3 class="settings-title">Comparison weights</h3>
         <label class="field">Profile <select id="weight-profile">
           <option value="terrainOnly">Terrain only</option><option value="mixed">Mixed</option><option value="chemistry">Geochemistry-oriented</option>
@@ -87,7 +85,7 @@
           <div id="candidate-sources" class="candidate-sources"></div>
           <h4>Why this match?</h4>
           <p class="hint" id="match-summary"></p>
-          <button type="button" id="explain-ai" hidden>Explain with on-device AI</button>
+          <button type="button" id="explain-ai" hidden>Explain with Gemini</button>
           <p class="hint" id="ai-summary" aria-live="polite"></p>
         </section>
       </div>

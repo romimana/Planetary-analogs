@@ -1,0 +1,317 @@
+{
+  "mars": [
+    {
+      "id": "gale:643",
+      "area": "Gale Crater",
+      "name": "Kemnay",
+      "coverage": 2,
+      "union": 7,
+      "firstRegions": 3,
+      "firstSites": 3,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "TCD",
+            "USA",
+            "IRL",
+            "CHL"
+          ],
+          "first": "terrain:19.8400/18.6700",
+          "firstRegion": "TCD"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "JPN",
+            "USA"
+          ],
+          "first": "GSJ:36131",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "JPN",
+            "IRL"
+          ],
+          "first": "GSJ:36131",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "IRL",
+            "USA",
+            "FRA",
+            "UKR",
+            "JPN"
+          ],
+          "first": "GSI-Tellus:586595C",
+          "firstRegion": "IRL"
+        }
+      ]
+    },
+    {
+      "id": "meridiani:54",
+      "area": "Meridiani Planum",
+      "name": "Auk_RAT",
+      "coverage": 2,
+      "union": 3,
+      "firstRegions": 3,
+      "firstSites": 3,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "AUS",
+            "USA"
+          ],
+          "first": "NGSA:2007190928001 Coarse",
+          "firstRegion": "AUS"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "USA",
+            "JPN"
+          ],
+          "first": "USGS-DS801:C-351599",
+          "firstRegion": "USA"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "USA",
+            "JPN"
+          ],
+          "first": "USGS-DS801:C-351599",
+          "firstRegion": "USA"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "JPN",
+            "USA"
+          ],
+          "first": "GSJ:82009",
+          "firstRegion": "JPN"
+        }
+      ]
+    },
+    {
+      "id": "gusev:132",
+      "area": "Gusev Crater",
+      "name": "ElDorado_Scuff_Shadow",
+      "coverage": 2,
+      "union": 6,
+      "firstRegions": 2,
+      "firstSites": 3,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "USA",
+            "AUS",
+            "IRL"
+          ],
+          "first": "USGS-DS801:C-327838",
+          "firstRegion": "USA"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "JPN",
+            "USA"
+          ],
+          "first": "GSJ:82008",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "JPN",
+            "GBR"
+          ],
+          "first": "GSJ:82008",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "JPN",
+            "GRID",
+            "USA"
+          ],
+          "first": "GSJ:94035",
+          "firstRegion": "JPN"
+        }
+      ]
+    }
+  ],
+  "moon": [
+    {
+      "id": "apollo17:soil16:line 66",
+      "area": "Apollo 17",
+      "name": "78221,71",
+      "coverage": 3,
+      "union": 8,
+      "firstRegions": 2,
+      "firstSites": 2,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "AUT",
+            "USA",
+            "CHL",
+            "IRL",
+            "ITA"
+          ],
+          "first": "GSI-GEMAS:Ap-4202",
+          "firstRegion": "AUT"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "AUT",
+            "USA",
+            "ITA"
+          ],
+          "first": "GSI-GEMAS:Ap-4202",
+          "firstRegion": "AUT"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "JPN",
+            "AUS",
+            "AUT",
+            "USA",
+            "GBR"
+          ],
+          "first": "GSJ:78016",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "AUT",
+            "USA",
+            "ITA",
+            "IRL"
+          ],
+          "first": "GSI-GEMAS:Ap-4202",
+          "firstRegion": "AUT"
+        }
+      ]
+    },
+    {
+      "id": "apollo16:soil16:line 42",
+      "area": "Apollo 16",
+      "name": "64501,122",
+      "coverage": 2,
+      "union": 6,
+      "firstRegions": 4,
+      "firstSites": 4,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "USA",
+            "ESP",
+            "JPN",
+            "JOR",
+            "IRL"
+          ],
+          "first": "USGS-DS801:C-351377",
+          "firstRegion": "USA"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "JPN",
+            "ESP"
+          ],
+          "first": "GSJ:71128",
+          "firstRegion": "JPN"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "PRT",
+            "IRL",
+            "JPN",
+            "ESP"
+          ],
+          "first": "GSI-GEMAS:Ap-3224",
+          "firstRegion": "PRT"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "ESP",
+            "JPN",
+            "USA"
+          ],
+          "first": "GSI-GEMAS:Gr-81",
+          "firstRegion": "ESP"
+        }
+      ]
+    },
+    {
+      "id": "apollo11:soil16:line 6",
+      "area": "Apollo 11",
+      "name": "10084,1591",
+      "coverage": 2,
+      "union": 7,
+      "firstRegions": 3,
+      "firstSites": 3,
+      "runs": [
+        {
+          "name": "terrain-only",
+          "regions": [
+            "CHN",
+            "USA",
+            "JPN",
+            "MNG",
+            "SAU"
+          ],
+          "first": "terrain:33.1000/88.0400",
+          "firstRegion": "CHN"
+        },
+        {
+          "name": "mixed",
+          "regions": [
+            "AUS",
+            "JPN",
+            "USA",
+            "GBR"
+          ],
+          "first": "NGSA:2007190325001 Coarse",
+          "firstRegion": "AUS"
+        },
+        {
+          "name": "geochemistry",
+          "regions": [
+            "AUS",
+            "JPN",
+            "GBR",
+            "USA"
+          ],
+          "first": "NGSA:2007190325001 Coarse",
+          "firstRegion": "AUS"
+        },
+        {
+          "name": "terrain-oriented",
+          "regions": [
+            "USA",
+            "GBR"
+          ],
+          "first": "USGS-DS801:C-346655",
+          "firstRegion": "USA"
+        }
+      ]
+    }
+  ]
+}

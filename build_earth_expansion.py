@@ -95,8 +95,7 @@ def tellus_rows():
     finally:
         workbook.close()
 
-def build(records, terrain):
-    path = ROOT / "data/earth-expansion.sqlite"
+def build(records, terrain, path=ROOT / "data/earth-expansion.sqlite"):
     stage = path.with_suffix(".build.sqlite")
     stage.unlink(missing_ok=True)
     with closing(sqlite3.connect(stage)) as db:

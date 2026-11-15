@@ -53,7 +53,8 @@ function rankAnalogs(data, body, target, settings) {
   const weights = {...settings.weights};
   const geoColumn = geologyColumn(body, target.geology_unit);
   if (geoColumn === null) weights.geology = 0;
-  if (!settings.useSolar) weights.solar = 0;
+  if (target.comparison_status === "chemistry_hold") weights.chemistry = 0;
+  if (!settings.useSolar || !target.solar.length) weights.solar = 0;
   const totalWeight = groups.reduce((total, key) => total + weights[key], 0);
   if (!totalWeight) return {ranked: [], weights, geoColumn, error: "Choose at least one available comparison weight."};
   for (const key of groups) weights[key] /= totalWeight;

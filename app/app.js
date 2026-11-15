@@ -3,7 +3,6 @@ const data = JSON.parse(document.querySelector("#app-data").textContent);
 const byId = id => document.getElementById(id);
 const form = byId("controls");
 const targetSelect = byId("target");
-const targetArea = byId("target-area");
 const solarToggle = byId("use-solar");
 const groupLabels = {chemistry: "Chemistry", terrain: "Terrain", geology: "Mapped geology", solar: "Sunlight"};
 const countries = {
@@ -59,7 +58,13 @@ function updateSettings() {
   const target = currentTarget();
   const supported = geologyColumn(body, target.geology_unit) !== null;
   const sol = target.sample.sol == null ? "" : ` · Sol ${target.sample.sol}`;
-  byId("target-context").textContent = `${target.name} · ${target.material}${sol} · ${target.location_role}`;
+  const hold = target.comparison_status === "chemistry_hold";
+  byId("target-context").textContent = `${target.area} · ${target.name} · ${target.material}${sol} · ${target.location_role}${hold ? " · Chemistry held by quality screening" : ""}`;
+  const recommendation = data.recommended[body]?.find(sample => sample.id === target.id);
+  const note = byId("target-recommendation");
+  note.hidden = !recommendation;
+  note.textContent = recommendation ?
+    `Demo recommendation · Top 10 includes ${recommendation.union} regions across four profiles, with ${recommendation.firstRegions} different first-place regions.` : "";
   const sources = [];
   if (target.sample.chemistry_url) sources.push(sourceLink("Measurement source", target.sample.chemistry_url));
   if (target.sample.location_source) sources.push(sourceLink("Location source", target.sample.location_source));
@@ -68,38 +73,31 @@ function updateSettings() {
   byId("geology-note").textContent = supported ?
     "Geology compares regional map units. Review the original map labels in each result." :
     "No comparable geology score for this target. Active weights will be normalized.";
-  byId("solar-options").hidden = !solarToggle.checked;
-  form.elements.solar.disabled = !solarToggle.checked;
+  form.elements.chemistry.disabled = hold;
+  solarToggle.disabled = !target.solar.length;
+  byId("solar-options").hidden = !solarToggle.checked && !solarToggle.disabled;
+  byId("solar-options").textContent = solarToggle.disabled ? "No archived solar scenarios for this measurement." :
+    "Find the closest daylight pair automatically and show both reference times in UTC.";
+  form.elements.solar.disabled = !solarToggle.checked || solarToggle.disabled;
 }
 
 function setBody(next) {
   body = next;
   document.querySelectorAll("[data-body]").forEach(button =>
     button.setAttribute("aria-pressed", button.dataset.body === body));
-  const areas = [...new Set(data[body].rows.map(row => row.area))].sort();
-  selectOptions(targetArea, areas, area => area, area => area, body === "mars" ? "Gusev Crater" : "Apollo 12");
-  selectArea();
-}
-
-function representative(rows) {
-  const stats = featureDefinitions.map((_, index) => {
-    const sorted = rows.map(row => row.values[index]).filter(Number.isFinite).sort((a, b) => a - b);
-    return sorted.length ? [percentile(sorted, .5), sorted.at(-1) - sorted[0] || 1] : null;
-  });
-  const distance = row => stats.reduce((sum, stat, index) => {
-    if (!stat) return sum;
-    const value = row.values[index];
-    return sum + (Number.isFinite(value) ? Math.abs(value - stat[0]) / stat[1] : 1);
-  }, 0);
-  return rows.map(row => ({row, distance: distance(row)}))
-    .sort((a, b) => a.distance - b.distance || a.row.id.localeCompare(b.row.id))[0].row;
-}
-
-function selectArea() {
-  const rows = data[body].rows.filter(row => row.area === targetArea.value);
-  const row = representative(rows);
-  selectOptions(targetSelect, rows, sample => sample.id,
-    sample => `${sample.name} · ${sample.id}${sample.id === row.id ? " · representative" : ""}`, row.id);
+  const rows = data[body].rows;
+  const recommended = (data.recommended[body] || [])
+    .map(({id}) => rows.find(row => row.id === id)).filter(Boolean);
+  const sampleLabel = row => `${row.area} · ${row.name} · ${row.id}${row.comparison_status === "chemistry_hold" ? " · Chemistry held" : ""}`;
+  const section = (label, samples) => {
+    const group = el("optgroup");
+    group.label = label;
+    selectOptions(group, samples, row => row.id, sampleLabel);
+    return group;
+  };
+  const first = recommended.length ? [section("Recommended demos", recommended)] : [];
+  targetSelect.replaceChildren(...first, ...[...new Set(rows.map(row => row.area))].sort()
+    .map(area => section(area, rows.filter(row => row.area === area && !recommended.includes(row)))));
   updateSettings();
   rank();
 }
@@ -207,8 +205,6 @@ function geologyLabel(row) {
   return row.geology_unit ? `${row.geology_description} (${row.geology_unit}) · ${row.geology_product}` : "Unavailable";
 }
 
-const aiOptions = {expectedInputs: [{type: "text", languages: ["en"]}],
-  expectedOutputs: [{type: "text", languages: ["en"]}]};
 let explanation = null;
 let explanationVersion = 0;
 
@@ -354,7 +350,6 @@ chemistry.forEach(([name], index) => {
 byId("chem-options").addEventListener("change", rank);
 document.querySelectorAll("[data-body]").forEach(button =>
   button.addEventListener("click", () => setBody(button.dataset.body)));
-targetArea.addEventListener("change", selectArea);
 targetSelect.addEventListener("change", () => {updateSettings(); rank();});
 solarToggle.addEventListener("change", () => {
   updateSettings();
@@ -395,25 +390,24 @@ byId("region").addEventListener("change", rank);
 byId("site-pool").addEventListener("change", rank);
 byId("regional-view").addEventListener("change", rank);
 const aiButton = byId("explain-ai");
-const model = globalThis.LanguageModel;
-if (model) model.availability(aiOptions).then(status => { aiButton.hidden = status === "unavailable"; }).catch(() => {});
+if (/^https?:$/.test(location.protocol)) fetch("/api/explain").then(response => response.ok ? response.json() : null)
+  .then(status => { aiButton.hidden = !status?.enabled; }).catch(() => {});
 aiButton.addEventListener("click", async () => {
-  if (!model || !explanation) return;
+  if (!explanation) return;
   const facts = JSON.stringify(explanation);
   const version = explanationVersion;
   const output = byId("ai-summary");
-  let session;
   aiButton.disabled = true;
-  output.textContent = "Preparing on-device explanation…";
+  output.textContent = "Preparing Gemini explanation…";
   try {
-    session = await model.create(aiOptions);
-    const summary = await session.prompt(
-      "Use only the following project facts. In at most three sentences, explain what the target record describes, why the selected site scored well, and one tradeoff. A reference UTC is not a forecast. Do not invent observations or history. " + facts);
-    if (version === explanationVersion) output.textContent = `On-device AI · ${summary}`;
+    const response = await fetch("/api/explain", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: facts, signal: AbortSignal.timeout(25000)});
+    if (!response.ok) throw new Error("Explanation service unavailable");
+    const {text} = await response.json();
+    if (version === explanationVersion) output.textContent = `Gemini · ${text}`;
   } catch {
-    if (version === explanationVersion) output.textContent = "On-device AI is unavailable. The measured comparison is shown above.";
+    if (version === explanationVersion) output.textContent = "Gemini is unavailable. The measured comparison is shown above.";
   } finally {
-    session?.destroy();
     aiButton.disabled = false;
   }
 });

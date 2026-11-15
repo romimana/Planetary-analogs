@@ -1,8 +1,8 @@
 # Earth terrain survey
 
-Terrain only is the explorer default. It includes both the original lab-sample locations and this chemistry-independent survey. The [data release](data/earth-terrain-sites.json) contains 705 5 km windows, including 26 in Spain and nine in Greece. Of the survey windows, 637 have a scored GLiM class. The app has 17,131 unique Earth sites across the two pools. Use **Earth sites → Terrain survey windows** to inspect the survey. Familiar analog regions receive the same scoring treatment as other sites.
+Terrain only is the explorer default. It includes both the lab-sample locations and this chemistry-independent survey. The [data release](data/earth-terrain-sites.json) contains 705 5 km windows, including 26 in Spain and nine in Greece. Of the survey windows, 637 have a scored GLiM class. The app has 20,540 unique Earth sites across the two pools. Use **Earth sites → Terrain survey windows** to inspect the survey. Familiar analog regions receive the same scoring treatment as other sites.
 
-The older Europe-wide measurements are GEMAS. The local modeling database contains 4,343 GEMAS records, with median slope available on 3,724 of them. All 405 Spanish and 166 Greek records have median slope. The public explorer uses the separate published snapshots. BGR makes GEMAS available for download under [its terms](https://umweltportal.niedersachsen.de/suche/detail?id=numis-metadaten-0554568e-c60f-4106-b099-839bb30f9c44). Redistribution of the full records in the bundled public HTML has not been verified.
+The older Europe-wide measurements are GEMAS. The local modeling database contains 4,343 records from the BGR extended distribution. The explorer uses the separate, openly licensed [GSI GEMAS release](GEMAS_PUBLIC.md) alongside the terrain survey.
 
 ## GIS sampling and quality controls
 
