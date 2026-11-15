@@ -1,5 +1,17 @@
 # Data codebook
 
+## Matching inputs
+
+The default model profile uses four chemistry fields (titanium dioxide for titanium-rich material, magnesium oxide for magnesium-bearing material, calcium oxide for calcium-bearing material, and potassium oxide for potassium-rich material) plus the six regional terrain metrics. Silica and manganese oxide are optional. The notebook uses the same selected features on both sides, transforms the chemistry subset to centered log ratios, and uses Earth medians and interquartile ranges to scale both matrices. A feature with zero Earth IQR uses divisor one. Sample IDs index `X_earth_ready` and `X_targets_ready`.
+
+For a solar match select a published UTC scenario on each body. The numeric input is `horizontal_projection`, with zero below the geometric horizon and one for overhead Sun. Treat zero as a distinct case if a test requires direct sunlight. Air and ground temperature, pressure, wind, moisture and grain-size evidence remain in archive tables. They are excluded from the prepared feature matrices.
+
+GIS geology fields are strings. A unit code is scoped to its map product and is joined to Earth samples by `site_id` and to planetary samples by sample ID. The model input excludes geology codes and coordinates from its numeric feature vectors. Use map units as filters or spatial context. Cross-world scoring would require an independently documented common legend. Terrain uses identical units and regional grid support, with different original sensor resolutions. A DEM-derived gentle patch describes regional-scale connectivity.
+
+### Solar verification
+
+`python audit_solar.py` checks the geometric projection in all 99,960 published rows and queries [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/manual.html) for airless topocentric elevation at 27 spot checks. Three locations spanning the sampled latitude range and three published times per location are checked on each body. Maximum absolute zenith-angle differences were 0.07270° (Earth), 0.07521° (Mars), and 0.00586° (Moon). The threshold for this screening check was 0.5°. The comparison uses geometric SPICE zenith and apparent airless Horizons elevation, with different reference surface conventions. These results support geometric screening at the sampled coordinates. They do not validate local shadow or power output. [Recorded checks and exact query links](data/solar-audit.json)
+
 The [Colab notebook](https://colab.research.google.com/github/romimana/Planetary-analogs/blob/main/explore_data.ipynb) reads [the versioned SQLite snapshot](data/ml-enriched.sqlite). Run the last section to build `point_profiles` and `audit`. The three profiles contain one row per eligible sample. The audit counts missing values in every displayed column. For a scenario feature it counts samples with zero qualifying observations. The denominators are 4,024 Earth, 137 Mars and 12 Moon samples. Mars excludes 12 chemistry holds. Nine Moon samples use mission-area anchors. Detailed time series are available in the database and in the notebook's `tables` dictionary.
 
 | Field | Meaning and units | Missing Earth | Missing Mars | Missing Moon |
