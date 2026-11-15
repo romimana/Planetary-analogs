@@ -1,0 +1,26 @@
+# Feature coverage and matching priorities
+
+Snapshot `26111d1`, `data/ml-full.sqlite`. Counts are missing **samples** out of 4,024 Earth, 12 Moon, and 137 Mars eligible samples. The Mars denominator excludes 12 chemistry holds. Eligible Moon samples include nine mission anchors whose terrain describes the landing area. Environmental absence means no qualifying scenario for that sample. Planetary environmental counts require rover or station context. Earth uses MODIS for surface temperature and ERA5 for air temperature and pressure.
+
+| Feature | Meaning | Earth | Moon | Mars | Default relevance / 5 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `sio2_wt_pct` | Silica, a major indicator of silicate composition | 3,022 | 0 | 0 | 5 |
+| `tio2_wt_pct` | Titanium dioxide, distinguishes titanium-rich material including some lunar basalts | 0 | 0 | 4 |
+| `mgo_wt_pct` | Magnesium oxide, helps distinguish magnesium-rich geologic material | 0 | 0 | 4 |
+| `cao_wt_pct` | Calcium oxide, indicates calcium contribution across possible minerals | 0 | 0 | 4 |
+| `k2o_wt_pct` | Potassium oxide, helps distinguish potassium-rich material | 0 | 0 | 3 |
+| `mno_wt_pct` | Manganese oxide, an additional discriminator of bulk composition | 0 | 0 | 2 |
+| `slope_median_deg` | Typical slope across the 5 km window | 3,410 | 0 | 0 | 3 |
+| `slope_p90_deg` | Slope at the 90th percentile, describing the steeper part of the window | 3,410 | 0 | 0 | 5 |
+| `slope_over_10_deg_fraction` | Fraction of measured gradient cells above 10 degrees | 3,410 | 0 | 0 | 4 |
+| `relief_p90_p10_m` | Elevation difference between the 90th and 10th percentiles | 3,410 | 0 | 0 | 3 |
+| `local_roughness_rms_m` | Elevation departures from neighboring cells on the 500 m grid | 3,410 | 0 | 0 | 4 |
+| Surface temperature in K | MODIS land surface, REMS ground brightness, or Diviner bolometric brightness | 3,588 | 9 | 128 | 3 |
+| `air_temperature_k` | Near-surface air temperature | 3,738 | N/A | 128 | 2 |
+| `pressure_pa` | Atmospheric pressure at the surface | 3,738 | N/A | 128 | 1 |
+
+The scores are judgment calls for general analog screening. Surface temperature rises to 5 for thermal testing. Use pressure as a test constraint for equipment affected by low pressure. A lunar ambient-air comparison is inapplicable. Rainfall, engineering texture, wind, and humidity are unavailable as harmonized comparison features. Use local solar time and date to select scenarios. Use coordinates, sample medium, source, distance, and quality as filters or provenance.
+
+Start with a fixed chemistry subset for every candidate and target in a run. Compare ratios together. Select a reduced slope set or cap the slope group's total weight to avoid double-counting. Apply the terrain profile only when the selected fields exist, and report the eligible count for every run. The common terrain grid is intended for regional screening.
+
+The local expanded Earth dataset has 8,367 samples. Silica is missing from 3,022. Each terrain field is missing from 7,627, MODIS from 4,267, and ERA5 from 8,014. These are sample counts, so multiple samples at a geographic site can share coverage.

@@ -1,5 +1,7 @@
 # Analog matching datasets
 
+See [feature coverage and matching priorities](FEATURES.md) for the per-body missing-value audit.
+
 ## Full dataset with missing values
 
 Open [`ml-full.sqlite`](data/ml-full.sqlite) for flexible matching. See [coverage and checksums](data/ml-full-coverage.json). The local file `outputs/ml-full-local.sqlite` adds GEMAS under its publisher terms. Run the comparison and final builds, then run `python build_full_ml.py` to reproduce both files. The complete dataset remains available in the `complete_earth`, `complete_mars`, and `complete_moon` tables.
