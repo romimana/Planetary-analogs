@@ -1,5 +1,7 @@
 # Analog matching datasets
 
+See the [data codebook](DATA_CODEBOOK.md) for current feature definitions, source attribution, and missing counts across all layers.
+
 ## Chemistry, terrain and mapped geology
 
 Use [ml-geology.sqlite](data/ml-geology.sqlite) for the expanded modeling data. It contains the full archive plus `earth_model_profiles`, `mars_model_profiles`, and `moon_model_profiles`. These views expose chemistry, terrain and mapped geology. Colab loads this database by default and verifies the checksum in [the coverage report](data/ml-geology.json). The local build also includes GEMAS under its source terms.
