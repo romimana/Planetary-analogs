@@ -12,7 +12,7 @@ const countries = {
 const featureDefinitions = [...chemistry, ...terrain];
 const formatScore = value => value.toFixed(3);
 const coordinates = row => `${row.latitude.toFixed(4)}°, ${row.longitude.toFixed(4)}°`;
-const displayTime = stamp => stamp.replace("T", " ").replace(":00Z", "Z");
+const displayTime = stamp => `${stamp.slice(0, 10)} at ${stamp.slice(11, 16)} UTC`;
 let body = "moon";
 let result = {ranked: []};
 let shortlist = [];
@@ -104,6 +104,7 @@ function setBody(next) {
 
 function readSettings() {
   return {
+    profile: byId("weight-profile").selectedOptions[0].textContent,
     weights: Object.fromEntries(groups.map(key => [key, Number(form.elements[key].value) || 0])),
     useSolar: solarToggle.checked,
     pool: byId("site-pool").value,
@@ -207,6 +208,7 @@ function geologyLabel(row) {
 
 let explanation = null;
 let explanationVersion = 0;
+let shortExplanation = "";
 
 function explainMatch(match) {
   const {row, distances} = match;
@@ -218,11 +220,9 @@ function explainMatch(match) {
     scaledDistance: Number(formatScore(distance)),
     comparison: index < chemistry.length ? "relative chemistry ratio" : "terrain"
   }));
-  const strongest = features[0];
-  const weakest = features.at(-1);
   const solar = match.sun ? {
-    planetUTC: data[activeBody].times[match.sun.targetTime],
-    earthUTC: data.earth.times[match.sun.earthTime],
+    planetUTC: displayTime(data[activeBody].times[match.sun.targetTime]),
+    earthUTC: displayTime(data.earth.times[match.sun.earthTime]),
     projectionDifference: Number(formatScore(distances.solar))
   } : null;
   const target = {area: activeTarget.area, name: activeTarget.name, material: activeTarget.material,
@@ -230,22 +230,24 @@ function explainMatch(match) {
     record: activeTarget.sample.chemistry_locator, geology: activeTarget.geology_description};
   const earth = {name: row.area || row.id, country: countries[row.region] || row.region,
     material: row.material, geology: row.geology_description};
-  explanation = {target, earth, score: Number(formatScore(match.score)), weights: result.weights,
+  explanation = {target, earth, profile: activeSettings.profile, score: Number(formatScore(match.score)), weights: result.weights,
     distances, features, solar};
-  const comparison = strongest ? `Closest numeric feature: ${strongest.name} (${strongest.comparison}).` : "";
-  const gap = weakest && weakest !== strongest ? ` Largest scaled feature gap: ${weakest.name}.` : "";
-  const mapped = distances.geology === null ? "" :
-    ` Mapped geology penalty: ${formatScore(distances.geology)}.`;
-  const sunlight = solar ? ` Best sunlit reference pair: Earth ${displayTime(solar.earthUTC)} / target ${displayTime(solar.planetUTC)}.` : "";
-  byId("match-summary").textContent = `${target.name} is a ${target.material} record from ${target.area}. ${comparison}${gap}${mapped}${sunlight}`;
+  const [leading] = groups.filter(group => result.weights[group] > 0)
+    .sort((a,b) => result.weights[b] - result.weights[a]);
+  const best = features.find(feature =>
+    (leading === "chemistry" && feature.comparison === "relative chemistry ratio") ||
+    (leading === "terrain" && feature.comparison === "terrain"));
+  const comparison = best ? ` Closest ${leading} measure: ${best.name.toLowerCase()}.` : "";
+  const sunlight = solar ? ` Earth daylight reference: ${solar.earthUTC}.` : "";
+  shortExplanation = `This comparison emphasizes ${groupLabels[leading].toLowerCase()}.${comparison}${sunlight}`;
+  byId("match-summary").textContent = shortExplanation;
 }
 
 function renderSelected() {
   const match = shortlist[selected];
   explanationVersion++;
   explanation = null;
-  byId("ai-summary").textContent = "";
-  byId("ai-summary").hidden = true;
+  byId("match-summary").classList.remove("generated");
   byId("candidate-detail").hidden = !match;
   byId("map-focus").disabled = !match;
   byId("map-overview").setAttribute("aria-pressed", !zoom);
@@ -398,8 +400,8 @@ aiButton.addEventListener("click", async () => {
   if (!explanation) return;
   const facts = JSON.stringify(explanation);
   const version = explanationVersion;
-  const output = byId("ai-summary");
-  output.hidden = false;
+  const output = byId("match-summary");
+  output.classList.remove("generated");
   aiButton.disabled = true;
   output.textContent = "Preparing Gemini explanation…";
   try {
@@ -414,13 +416,14 @@ aiButton.addEventListener("click", async () => {
     const {text} = await response.json();
     if (version !== explanationVersion) return;
     if (response.status === 429) {
-      output.textContent = "Gemini has reached its request limit. The match summary is still available above.";
+      output.textContent = `Gemini has reached its request limit. ${shortExplanation}`;
       return;
     }
     if (!response.ok || typeof text !== "string" || !text.trim()) throw new Error("No explanation returned");
     output.textContent = `Gemini · ${text}`;
+    output.classList.add("generated");
   } catch {
-    if (version === explanationVersion) output.textContent = "Gemini is unavailable. The measured comparison is shown above.";
+    if (version === explanationVersion) output.textContent = `Gemini is temporarily unavailable. ${shortExplanation}`;
   } finally {
     aiButton.disabled = false;
   }

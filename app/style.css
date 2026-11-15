@@ -68,7 +68,7 @@ input[type=checkbox]{accent-color:var(--orange)}
 .explanation{border-color:#805048}
 .explanation-body{padding:0 20px 18px}
 .explanation-body p{line-height:1.55;margin:0 0 14px;max-width:74ch}
-.explanation-body #ai-summary{margin:14px 0 0;padding:13px 15px;background:#202b3c;border-radius:8px}
+.explanation-body .generated{padding:13px 15px;background:#202b3c;border-radius:8px}
 .explain-button{width:auto;gap:22px}
 .explain-button[hidden]{display:none}
 .match-data summary{cursor:pointer;padding:13px 20px;border-top:1px solid var(--line);color:var(--cyan)}

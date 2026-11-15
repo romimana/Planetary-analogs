@@ -14,7 +14,10 @@ APP = Path(__file__).resolve().parent / "app"
 URL = "https://generativelanguage.googleapis.com/v1beta/models/"
 PROMPT = (
     "Explain this planetary analog in English in up to three sentences, using only the JSON facts. "
-    "Identify the recorded material, the smallest meaningful differences, and a tradeoff or uncertainty. "
+    "Lead with evidence for the highest active weight, using the selected profile as context. "
+    "For a chemistry-led comparison, describe the relative composition and leading chemistry differences first. "
+    "For a terrain-led comparison, lead with the measured terrain differences. Mention a relevant tradeoff when supported. "
+    "If solar is supplied, include both Earth and target daylight reference dates and times as given, with UTC. "
     "Chemistry comparisons use ratios. A mission anchor is an approximate location, not a sample coordinate. "
     "A reference UTC is not a forecast. Do not invent a measurement, history or field suitability. "
     "A smaller distance means a closer comparison on selected features. Never infer confidence from the score. "
@@ -90,7 +93,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not 0 < length <= 8192 or self.headers.get_content_type() != "application/json":
                 raise ValueError
             facts = json.loads(self.rfile.read(length))
-            if not isinstance(facts, dict) or set(facts) != {
+            if not isinstance(facts, dict) or set(facts) - {"profile"} != {
                     "target", "earth", "score", "weights", "distances", "features", "solar"}:
                 raise ValueError
         except (ValueError, OSError):
