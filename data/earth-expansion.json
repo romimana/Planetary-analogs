@@ -1,0 +1,29 @@
+{
+  "columns": [
+    "survey",
+    "samples",
+    "sites",
+    "silica",
+    "geology",
+    "silica_and_geology"
+  ],
+  "coverage": [
+    [
+      "GSI-Tellus",
+      7650,
+      7648,
+      7650,
+      7482,
+      7482
+    ],
+    [
+      "USGS-DS801",
+      4754,
+      4754,
+      0,
+      4691,
+      0
+    ]
+  ],
+  "sha256": "c854d0152c83f17aa60116b83ba102f86a1986f098c25650625808802abfce31"
+}

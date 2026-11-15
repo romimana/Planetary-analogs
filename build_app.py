@@ -16,12 +16,34 @@ FIELDS = (*CHEMISTRY, *TERRAIN, NEW)
 def json_script(payload):
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).replace("<", "\\u003c")
 
-def read_payload():
-    path = ROOT / "data/ml-enriched.sqlite"
+def verified_snapshot(path):
     actual = hashlib.sha256(path.read_bytes()).hexdigest()
     expected = json.loads(path.with_suffix(".json").read_text())["sha256"]
     if actual != expected:
-        raise ValueError("The database does not match its published checksum")
+        raise ValueError(f"{path.name} does not match its published checksum")
+    return actual
+
+def add_expansion(result):
+    path = ROOT / "data/earth-expansion.sqlite"
+    sha = verified_snapshot(path)
+    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        weather = {}
+        for site, stamp, value in db.execute("SELECT location_id,utc,horizontal_projection FROM solar_scenarios"):
+            weather.setdefault(site, {})[stamp] = value
+        fields = ",".join(FIELDS)
+        for record in db.execute(f"""SELECT id,site_id,region,latitude,longitude,material,source_id,
+            chemistry_source_url,geology_unit,geology_description,geology_url,{fields}
+            FROM earth_model_profiles ORDER BY id"""):
+            row = dict(record)
+            row["values"] = [row.pop(name) for name in FIELDS]
+            row["solar"] = [round(weather[row["site_id"]][stamp], 7) for stamp in result["earth"]["times"]]
+            result["earth"]["rows"].append(row)
+    return sha
+
+def read_payload():
+    path = ROOT / "data/ml-enriched.sqlite"
+    actual = verified_snapshot(path)
     result = {}
     with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
         db.row_factory = sqlite3.Row
@@ -50,6 +72,7 @@ def read_payload():
             site: {"scene": scene, "source": url}
             for site, scene, url in db.execute("SELECT site_id,scene,source_url FROM earth_radar ORDER BY scene")
         }
+    expansion_sha = add_expansion(result)
     rubric = {}
     for line in (ROOT / "GEOLOGY_MATCHING.md").read_text(encoding="utf-8").splitlines():
         if line.startswith("| ") and len(line.split("|")) == 6:
@@ -58,7 +81,7 @@ def read_payload():
                 rubric[code] = [float(moon), float(mars)]
     if len(rubric) != 13:
         raise ValueError("Expected 13 documented map-unit penalties")
-    return {**result, "rubric": rubric, "sha256": actual}
+    return {**result, "rubric": rubric, "sha256": actual, "expansionSha256": expansion_sha}
 
 def main():
     source = (APP / "template.html").read_text(encoding="utf-8")
@@ -68,6 +91,8 @@ def main():
     photo = base64.b64encode((APP / "assets/mars.jpg").read_bytes()).decode("ascii")
     replacements = {
         "/*APP_STYLE*/": (APP / "style.css").read_text(encoding="utf-8"),
+        "/*LEAFLET_STYLE*/": (APP / "assets/leaflet.css").read_text(encoding="utf-8"),
+        "/*LEAFLET_SCRIPT*/": (APP / "assets/leaflet.js").read_text(encoding="utf-8").split("//# sourceMappingURL=")[0],
         "/*APP_DATA*/": json_script(payload),
         "/*RANKING_ENGINE*/": (APP / "ranking.js").read_text(encoding="utf-8"),
         "/*APP_SCRIPT*/": (APP / "app.js").read_text(encoding="utf-8"),

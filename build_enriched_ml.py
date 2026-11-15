@@ -42,7 +42,7 @@ def utc_dates(body):
     return [datetime.strptime(day, "%Y%m%d").replace(hour=h).strftime("%Y-%m-%dT%H:%M:%SZ")
             for day in DAYS for h in range(0, 24, 4)]
 
-def stage_solar(db):
+def stage_solar(db, bodies=("earth", "mars", "moon")):
     db.executescript("""
         CREATE TABLE solar_sources (kernel TEXT PRIMARY KEY,url TEXT NOT NULL,sha256 TEXT NOT NULL);
         CREATE TABLE solar_scenarios (
@@ -61,6 +61,8 @@ def stage_solar(db):
               "mars": ("IAU_MARS", "MARS BARYCENTER", 3396.19),
               "moon": ("MOON_ME_DE440_ME421", "MOON", 1737.4)}
     for body, (frame, origin, radius) in frames.items():
+        if body not in bodies:
+            continue
         if body == "earth":
             rows = db.execute("SELECT DISTINCT site_id,latitude,longitude FROM earth_samples ORDER BY 1").fetchall()
         else:

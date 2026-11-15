@@ -50,7 +50,9 @@ function rankAnalogs(data, body, target, settings) {
   const candidates = data.earth.rows.flatMap(row => {
     const values = vector(row);
     const geology = data.rubric[row.geology_unit]?.[geoColumn];
-    return values && (!weights.geology || Number.isFinite(geology)) ? [{row, values, geology}] : [];
+    const solarAvailable = !weights.solar ||
+      (Number.isFinite(row.solar[settings.earthTime]) && Number.isFinite(target.solar[settings.targetTime]));
+    return values && solarAvailable && (!weights.geology || Number.isFinite(geology)) ? [{row, values, geology}] : [];
   });
   if (!candidates.length) return {ranked: [], weights, geoColumn, error: "No Earth candidates meet the selected requirements."};
 
@@ -74,7 +76,16 @@ function rankAnalogs(data, body, target, settings) {
     return {...candidate, score, distances, featureDistances: indices.map((index, i) => [index, standardized[i]])};
   });
   ranked.sort((a, b) => a.score - b.score || a.row.id.localeCompare(b.row.id));
-  return {ranked, weights, geoColumn};
+  const eligibleByRegion = {};
+  const sites = new Set();
+  const rankedSites = ranked.filter(({row}) => {
+    if (sites.has(row.site_id)) return false;
+    sites.add(row.site_id);
+    eligibleByRegion[row.region] = (eligibleByRegion[row.region] || 0) + 1;
+    return true;
+  });
+  return {ranked: settings.region ? rankedSites.filter(item => item.row.region === settings.region) : rankedSites,
+          weights, geoColumn, eligibleByRegion};
 }
 
 if (typeof module !== "undefined") module.exports = {rankAnalogs, geologyColumn};

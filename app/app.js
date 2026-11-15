@@ -5,7 +5,7 @@ const form = byId("controls");
 const targetSelect = byId("target");
 const solarToggle = byId("use-solar");
 const groupLabels = {chemistry: "Chemistry", terrain: "Terrain", geology: "Mapped geology", solar: "Sunlight"};
-const countries = {AUS: "Australia", JPN: "Japan"};
+const countries = {AUS: "Australia", JPN: "Japan", USA: "United States", IRL: "Ireland"};
 const featureDefinitions = [...chemistry, ...terrain];
 const formatScore = value => value.toFixed(3);
 const coordinates = row => `${row.latitude.toFixed(4)}°, ${row.longitude.toFixed(4)}°`;
@@ -15,6 +15,17 @@ let result = {ranked: []};
 let shortlist = [];
 let selected = 0;
 let zoom = false;
+const map = L.map("map", {minZoom: 1, maxZoom: 19, zoomControl: true}).setView([15, 100], 2);
+map.attributionControl.setPrefix(false);
+L.geoJSON(data.land, {interactive: false, style: {color: "#52657b", weight: 1, fillColor: "#2b3a4e", fillOpacity: .9}}).addTo(map);
+map.attributionControl.addAttribution("Natural Earth");
+const markers = L.layerGroup().addTo(map);
+map.createPane("detailTiles").style.zIndex = 450;
+const detailTiles = /^https?:/.test(location.protocol) ? L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  pane: "detailTiles", maxNativeZoom: 19, maxZoom: 19,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}) : null;
+const presets = {mixed: [45, 45, 10, 10], chemistry: [70, 20, 10, 10], terrain: [20, 70, 10, 10]};
 let activeSettings;
 let activeTarget;
 let activeBody;
@@ -67,6 +78,7 @@ function readSettings() {
   return {
     weights: Object.fromEntries(groups.map(key => [key, Number(form.elements[key].value) || 0])),
     useSolar: solarToggle.checked,
+    region: byId("region").value,
     targetTime: Number(byId("target-time").value),
     earthTime: Number(byId("earth-time").value),
     chemIndices: Array.from(document.querySelectorAll("#chem-options input:checked"), x => Number(x.value))
@@ -82,10 +94,13 @@ function rank() {
   shortlist = result.ranked.slice(0, 10);
   selected = 0;
   zoom = false;
-  byId("results-status").textContent = result.error ||
-    `Top ${shortlist.length} of ${result.ranked.length.toLocaleString("en-US")} eligible Earth sites · ${activeTarget.name}`;
+  const coverage = Object.entries(result.eligibleByRegion || {}).map(([iso, n]) => `${countries[iso] || iso} ${n.toLocaleString("en-US")}`).join(" · ");
+  byId("regional-coverage").textContent = coverage ? `Eligible by region · ${coverage}` : "";
+  byId("results-status").textContent = result.error || (!shortlist.length ? "No eligible sites in this region." :
+    `Top ${shortlist.length} of ${result.ranked.length.toLocaleString("en-US")} eligible Earth sites · ${activeTarget.name}`);
   renderResults();
   renderSelected();
+  fitMap();
 }
 
 function renderResults() {
@@ -115,7 +130,8 @@ function selectCandidate(index) {
     line.classList.toggle("is-active", i === index);
     line.querySelector("button").setAttribute("aria-pressed", i === index);
   });
-  renderSelected();
+  if (zoom) focusMap();
+  else renderSelected();
 }
 
 function groupCards(match) {
@@ -157,12 +173,14 @@ function renderSelected() {
   byId("map-overview").setAttribute("aria-pressed", !zoom);
   byId("map-focus").setAttribute("aria-pressed", zoom);
   byId("earth-link").hidden = !match;
+  byId("osm-link").hidden = !match;
   byId("download-kml").hidden = !match;
   byId("coordinates").textContent = "";
   byId("map-status").textContent = match ? `Selected · ${match.row.id}` : "No candidates to map.";
   if (match) {
     const {row, distances} = match;
     byId("coordinates").textContent = `${countries[row.region] || row.region} · ${coordinates(row)}`;
+    byId("osm-link").href = `https://www.openstreetmap.org/?mlat=${row.latitude}&mlon=${row.longitude}#map=15/${row.latitude}/${row.longitude}`;
     byId("earth-link").href = `https://earth.google.com/web/search/${encodeURIComponent(`${row.latitude},${row.longitude}`)}`;
     byId("detail-subtitle").textContent = `${row.id} · ${row.material}`;
     byId("breakdown").className = "breakdown";
@@ -181,7 +199,9 @@ function renderSelected() {
         time(earthSun, data.earth.times[activeSettings.earthTime]), formatScore(distances.solar)));
     }
     byId("feature-details").replaceChildren(...lines);
-    const sources = [el("span", `Chemistry source · ${row.source_id}`)];
+    const sources = [row.chemistry_source_url ?
+      sourceLink(`Chemistry source · ${row.source_id}`, row.chemistry_source_url) :
+      el("span", `Chemistry source · ${row.source_id}`)];
     if (row.geology_url) sources.push(sourceLink("Earth geology source", row.geology_url));
     if (activeTarget.geology_url) sources.push(sourceLink("Target geology source", activeTarget.geology_url));
     if (data.radar[row.site_id]) sources.push(sourceLink("CSA RADARSAT-1 scene", data.radar[row.site_id].source));
@@ -191,74 +211,40 @@ function renderSelected() {
 }
 
 function drawMap() {
-  const canvas = byId("map-canvas");
-  const {width, height} = byId("map").getBoundingClientRect();
-  if (!width || !height) return;
-  const ratio = window.devicePixelRatio || 1;
-  canvas.width = Math.round(width * ratio);
-  canvas.height = Math.round(height * ratio);
-  const ctx = canvas.getContext("2d");
-  ctx.scale(ratio, ratio);
-  const center = zoom && shortlist.length ? shortlist[selected].row : {latitude: 0, longitude: 132};
-  const visibleLat = zoom ? 11 : 104;
-  const horizontalDegrees = Math.min(360, visibleLat * width / height);
-  const scale = Math.min(height / visibleLat, width / horizontalDegrees);
-  const project = (lon, lat) => {
-    const delta = ((lon - center.longitude + 540) % 360) - 180;
-    return [width / 2 + delta * scale, height / 2 - (lat - center.latitude) * scale];
-  };
-  ctx.fillStyle = "#101927";
-  ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = "#253449";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  const gridStep = zoom ? 2 : 15;
-  for (let lon = -180; lon < 180; lon += gridStep) {
-    const [x] = project(lon, 0);
-    ctx.moveTo(x, 0);ctx.lineTo(x, height);
-  }
-  for (let lat = -90; lat <= 90; lat += gridStep) {
-    const y = project(0, lat)[1];
-    ctx.moveTo(0, y);ctx.lineTo(width, y);
-  }
-  ctx.stroke();
-  ctx.fillStyle = "#283546";
-  ctx.strokeStyle = "#52657b";
-  for (const geometry of data.land) {
-    const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
-    for (const polygon of polygons) {
-      // Overview is centered on East Asia and Australia. Omit paths crossing its back meridian.
-      const projected = polygon.map(ring => ring.map(([lon, lat]) => project(lon, lat)));
-      if (projected[0].some(([x], i, ring) => i && Math.abs(x - ring[i-1][0]) > 180 * scale)) continue;
-      ctx.beginPath();
-      for (const ring of projected) {
-        ring.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
-        ctx.closePath();
-      }
-      ctx.fill("evenodd");
-      ctx.stroke();
-    }
-  }
-  const pins = [];
+  markers.clearLayers();
   shortlist.forEach(({row}, index) => {
-    const [x, y] = project(row.longitude, row.latitude);
-    if (x < 0 || x > width || y < 0 || y > height) return;
-    const pin = el("button", String(index + 1), "pin");
-    pin.type = "button";
-    pin.style.left = `${x}px`;
-    pin.style.top = `${y}px`;
-    pin.setAttribute("aria-label", `Rank ${index + 1}, ${row.id}`);
-    pin.setAttribute("aria-pressed", index === selected);
-    pin.addEventListener("click", () => {
-      selectCandidate(index);
-      byId("map-focus").focus();
-    });
-    pins.push(pin);
+    const marker = L.marker([row.latitude, row.longitude], {
+      title: `Rank ${index + 1}, ${row.id}`,
+      riseOnHover: true,
+      zIndexOffset: index === selected ? 500 : 0,
+      icon: L.divIcon({
+        className: `map-pin ${index === selected ? "selected-pin" : ""}`,
+        html: String(index + 1), iconSize: [25, 25], iconAnchor: [12, 12]
+      })
+    }).addTo(markers);
+    marker.on("click", () => selectCandidate(index));
   });
-  byId("map-pins").replaceChildren(...pins);
 }
 
-for (const key of ["earth", "mars", "moon"]) byId(`${key}-count`).textContent = data[key].rows.length.toLocaleString("en-US");
+function fitMap() {
+  if (detailTiles && map.hasLayer(detailTiles)) map.removeLayer(detailTiles);
+  if (shortlist.length) {
+    map.fitBounds(L.latLngBounds(shortlist.map(({row}) => [row.latitude, row.longitude])),
+      {padding: [35, 35], maxZoom: 7, animate: false});
+  }
+}
+
+function focusMap() {
+  if (!shortlist.length) return;
+  zoom = true;
+  const row = shortlist[selected].row;
+  map.setView([row.latitude, row.longitude], 12, {animate: false});
+  if (detailTiles && !map.hasLayer(detailTiles)) detailTiles.addTo(map);
+  renderSelected();
+}
+
+byId("earth-count").textContent = new Set(data.earth.rows.map(row => row.site_id)).size.toLocaleString("en-US");
+for (const key of ["mars", "moon"]) byId(`${key}-count`).textContent = data[key].rows.length.toLocaleString("en-US");
 chemistry.forEach(([name], index) => {
   const label = el("label", undefined, "checkbox");
   const check = el("input");
@@ -268,22 +254,19 @@ chemistry.forEach(([name], index) => {
   label.append(check, document.createTextNode(name));
   byId("chem-options").append(label);
 });
+byId("chem-options").addEventListener("change", rank);
 selectOptions(byId("earth-time"), data.earth.times, (_, i) => i, displayTime, "1");
 document.querySelectorAll("[data-body]").forEach(button =>
   button.addEventListener("click", () => setBody(button.dataset.body)));
 targetSelect.addEventListener("change", () => {updateSettings(); rank();});
 solarToggle.addEventListener("change", () => {
-  const chemistryWeight = form.elements.chemistry;
-  const terrainWeight = form.elements.terrain;
-  const standardWeight = solarToggle.checked ? "45" : "40";
-  if (chemistryWeight.value === standardWeight && terrainWeight.value === standardWeight) {
-    chemistryWeight.value = terrainWeight.value = solarToggle.checked ? "40" : "45";
-  }
   updateSettings();
+  const profile = byId("weight-profile");
+  if (profile.value !== "custom") profile.dispatchEvent(new Event("change"));
 });
 form.addEventListener("submit", event => { event.preventDefault(); rank(); });
-byId("map-overview").addEventListener("click", () => { zoom = false; renderSelected(); });
-byId("map-focus").addEventListener("click", () => { zoom = true; renderSelected(); });
+byId("map-overview").addEventListener("click", () => { zoom = false; renderSelected(); fitMap(); });
+byId("map-focus").addEventListener("click", focusMap);
 byId("download-kml").addEventListener("click", () => {
   const match = shortlist[selected];
   if (!match) return;
@@ -306,5 +289,20 @@ byId("download-kml").addEventListener("click", () => {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
-new ResizeObserver(drawMap).observe(byId("map"));
+new ResizeObserver(() => map.invalidateSize()).observe(byId("map"));
+const regionOptions = [...new Set(data.earth.rows.map(row => row.region))].sort((a, b) =>
+  (countries[a] || a).localeCompare(countries[b] || b));
+selectOptions(byId("region"), ["", ...regionOptions], x => x, x => x ? countries[x] || x : "All eligible regions");
+byId("region").addEventListener("change", rank);
+byId("weight-profile").addEventListener("change", event => {
+  const weights = presets[event.target.value];
+  if (!weights) return;
+  groups.forEach((key, i) => {
+    form.elements[key].value = weights[i] - (solarToggle.checked && i < 2 ? 5 : 0);
+  });
+  rank();
+});
+for (const key of groups) {
+  form.elements[key].addEventListener("input", () => { byId("weight-profile").value = "custom"; });
+}
 setBody(body);
