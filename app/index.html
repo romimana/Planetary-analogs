@@ -1428,8 +1428,14 @@ aiButton.addEventListener("click", async () => {
   aiButton.disabled = true;
   output.textContent = "Preparing Gemini explanation…";
   try {
-    const response = await fetch("/api/explain", {method: "POST", headers: {"Content-Type": "application/json"},
-      body: facts, signal: AbortSignal.timeout(25000)});
+    const requestExplanation = () => fetch("/api/explain", {method: "POST",
+      headers: {"Content-Type": "application/json"}, body: facts, signal: AbortSignal.timeout(25000)});
+    let response = await requestExplanation().catch(() => null);
+    if ((!response || [502, 503, 504].includes(response.status)) && version === explanationVersion) {
+      output.textContent = "Retrying Gemini…";
+      response = await requestExplanation();
+    }
+    if (version !== explanationVersion) return;
     const {text} = await response.json();
     if (version !== explanationVersion) return;
     if (response.status === 429) {
